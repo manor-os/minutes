@@ -1,0 +1,173 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: meeting-note-postgres
+    environment:
+      POSTGRES_USER: meeting_user
+      POSTGRES_PASSWORD: meeting_password
+      POSTGRES_DB: meeting_notes
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meeting_user -d meeting_notes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meeting-network
+    restart: unless-stopped
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: meeting-note-redis
+    ports:
+      - "6382:6379"  # Changed from 6381 to 6382 to avoid conflicts
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meeting-network
+    restart: unless-stopped
+
+  # MinIO Object Storage (audio files)
+  minio:
+    image: minio/minio:latest
+    container_name: meeting-note-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PORT:-9012}:9000"
+      - "${MINIO_CONSOLE_PORT:-9013}:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meeting-network
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meeting-note-backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_URL=postgresql://meeting_user:meeting_password@postgres:5432/meeting_notes
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+      - STORAGE_BACKEND=minio
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=minutes-audio
+      - MINIO_SECURE=false
+      - STORAGE_DIR=/app/storage/meetings
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./backend:/app
+      - meeting_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - meeting-network
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meeting-note-celery
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_URL=postgresql://meeting_user:meeting_password@postgres:5432/meeting_notes
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+      - STORAGE_BACKEND=minio
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=minutes-audio
+      - MINIO_SECURE=false
+      - STORAGE_DIR=/app/storage/meetings
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+    volumes:
+      - ./backend:/app
+      - meeting_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - meeting-network
+    command: celery -A celery_tasks worker --loglevel=info --concurrency=2
+    restart: unless-stopped
+
+  # Phone Recorder Frontend (nginx serving pre-built static files)
+  phone-recorder:
+    build:
+      context: ./phone-recorder
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8002}
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-}
+        - VITE_GOOGLE_REDIRECT_URI=${VITE_GOOGLE_REDIRECT_URI:-}
+    container_name: meeting-note-frontend
+    ports:
+      - "${FRONTEND_PORT:-9002}:80"
+    depends_on:
+      - backend
+    networks:
+      - meeting-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  meeting_storage:
+
+networks:
+  meeting-network:
+    driver: bridge
+
