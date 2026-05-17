@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+
+# Environment (keep .env.example and .env.community.example)
+.env
+.env.bak
+.env.local
+.env.*.local
+!.env.example
+!.env.community.example
+
+# Docker Compose local overrides (auto-loaded, has dev-specific config)
+docker-compose.override.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Storage
+storage/
+*.webm
+*.mp3
+*.wav
+*.m4a
+*.ogg
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# Backups
+backups/
+
+# Docs build
+docs/build/
+docs/.docusaurus/
+docs/node_modules/
+
+# Extension
+browser-extension/*.crx
+browser-extension/*.pem
+
