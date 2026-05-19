@@ -26,7 +26,7 @@ from loguru import logger
 
 # --- Config from env -------------------------------------------------------
 
-MANOR_BASE_URL = os.getenv("MANOR_BASE_URL", "").rstrip("/")
+MANOR_BASE_URL = os.getenv("MANOR_BASE_URL", "https://app.manorai.xyz").rstrip("/")
 MANOR_CLIENT_ID = os.getenv("MANOR_CLIENT_ID", "")
 MANOR_CLIENT_SECRET = os.getenv("MANOR_CLIENT_SECRET", "")
 MANOR_REDIRECT_URI = os.getenv("MANOR_REDIRECT_URI", "")

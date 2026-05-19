@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 import httpx
 from loguru import logger
 
-MANOR_BASE_URL = os.getenv("MANOR_BASE_URL", "").rstrip("/")
+MANOR_BASE_URL = os.getenv("MANOR_BASE_URL", "https://app.manorai.xyz").rstrip("/")
 MANOR_BILLING_PATH = os.getenv("MANOR_BILLING_PATH", "/api/credits/charge")
 # Service-to-service API key for billing calls. Distinct from MANOR_CLIENT_SECRET
 # (which is the OAuth client secret) so the two surfaces can be rotated separately.
