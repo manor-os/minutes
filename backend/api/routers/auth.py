@@ -4,9 +4,10 @@ Authentication router - local auth for all editions
 from collections import defaultdict
 from time import time
 from fastapi import APIRouter, HTTPException, Depends, Header, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
+from urllib.parse import urlencode
 from pydantic import BaseModel
 from loguru import logger
 
@@ -15,8 +16,14 @@ from api.services.local_auth_service import (
     init_users_table, register_user, authenticate_user,
     generate_token, verify_token as verify_local_token, get_user_by_email, update_user_llm_config,
     change_password as change_password_service, delete_account as delete_account_service,
-    update_user_webhook_url, seed_default_admin
+    update_user_webhook_url, seed_default_admin, upsert_oauth_user, _stable_entity_id,
 )
+from api.config.edition import (
+    ENABLE_MANOR_SSO,
+    MANOR_LOGIN_SUCCESS_REDIRECT,
+    MANOR_LOGIN_FAILURE_REDIRECT,
+)
+from api.services import manor_auth_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 security = HTTPBearer(auto_error=False)
@@ -351,6 +358,95 @@ async def delete_account(request: DeleteAccountRequest, credentials: HTTPAuthori
         raise HTTPException(status_code=400, detail=result.get("error", "Failed to delete account"))
 
     return JSONResponse({"success": True, "message": "Account and all data deleted successfully"})
+
+
+# --- Manor AI SSO (cloud edition only) ------------------------------------
+#
+# /api/auth/manor/login  -> redirects the browser to Manor's authorize page.
+# /api/auth/manor/callback -> Manor redirects back here with `code` + `state`.
+#   The backend exchanges the code, verifies the user has an active "minutes"
+#   subscription on Manor, upserts a local user record, and finally redirects
+#   the browser to MANOR_LOGIN_SUCCESS_REDIRECT with the minutes JWT attached.
+
+
+def _redirect_with_error(base_url: str, error: str) -> RedirectResponse:
+    sep = "&" if "?" in base_url else "?"
+    return RedirectResponse(url=f"{base_url}{sep}{urlencode({'error': error})}", status_code=302)
+
+
+@router.get("/manor/login")
+async def manor_login(redirect: Optional[str] = None):
+    """Kick off the Manor OAuth flow. `redirect` is optional and lets the
+    frontend specify where the browser should land after a successful login —
+    falls back to MANOR_LOGIN_SUCCESS_REDIRECT."""
+    if not ENABLE_MANOR_SSO:
+        raise HTTPException(status_code=404, detail="Manor SSO is not enabled in this edition")
+    if not manor_auth_service.is_configured():
+        raise HTTPException(status_code=503, detail="Manor SSO is not configured on this server")
+
+    state = manor_auth_service.build_state(post_login_redirect=redirect or "")
+    return RedirectResponse(url=manor_auth_service.build_authorize_url(state), status_code=302)
+
+
+@router.get("/manor/callback")
+async def manor_callback(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+):
+    """OAuth callback. Always redirects the browser onward — either with a
+    minutes JWT (success) or with an `?error=...` query param."""
+    if not ENABLE_MANOR_SSO:
+        raise HTTPException(status_code=404, detail="Manor SSO is not enabled in this edition")
+
+    if error:
+        logger.info(f"Manor OAuth callback returned provider error: {error}")
+        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, error)
+
+    if not code or not state:
+        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "missing_code")
+
+    state_payload = manor_auth_service.parse_state(state)
+    if not state_payload:
+        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "invalid_state")
+
+    token_response = manor_auth_service.exchange_code_for_token(code)
+    if not token_response or "access_token" not in token_response:
+        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "token_exchange_failed")
+    access_token = token_response["access_token"]
+
+    userinfo = manor_auth_service.fetch_userinfo(access_token)
+    if not userinfo:
+        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "userinfo_failed")
+
+    manor_user_id = str(userinfo.get("id") or userinfo.get("sub") or "").strip()
+    email = (userinfo.get("email") or "").strip().lower()
+    name = (userinfo.get("name") or userinfo.get("full_name") or "").strip()
+    if not manor_user_id or not email:
+        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "invalid_userinfo")
+
+    active, _sub = manor_auth_service.check_minutes_subscription(access_token)
+    if not active:
+        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "no_subscription")
+
+    user = upsert_oauth_user(email=email, manor_user_id=manor_user_id, name=name)
+    if not user:
+        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "user_provisioning_failed")
+
+    minutes_token = generate_token({
+        "id": str(user["id"]),
+        "email": user["email"],
+        "name": user["name"],
+    })
+
+    target = state_payload.get("redirect") or MANOR_LOGIN_SUCCESS_REDIRECT
+    params = urlencode({
+        "token": minutes_token,
+        "entity_id": _stable_entity_id(user["email"]),
+        "email": user["email"],
+    })
+    sep = "&" if "?" in target else "?"
+    return RedirectResponse(url=f"{target}{sep}{params}", status_code=302)
 
 
 # Initialize local users table on import (all editions now use local auth)

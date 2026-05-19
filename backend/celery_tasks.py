@@ -4,6 +4,7 @@ Celery tasks for async meeting processing
 from celery import Celery
 import os
 import httpx
+from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -49,9 +50,40 @@ def _check_required_env() -> None:
 _check_required_env()
 
 
-def _report_token_usage(entity_id: int, input_tokens: int, output_tokens: int) -> None:
-    """No-op: token usage reporting removed."""
-    pass
+def _charge_manor_credits(
+    entity_id: int,
+    transcription_minutes: float,
+    input_tokens: int,
+    output_tokens: int,
+    meeting_id: Optional[str] = None,
+) -> None:
+    """Charge a completed meeting to the user's Manor AI credit balance.
+
+    No-op unless Manor billing is enabled and the user originated from Manor
+    SSO (i.e. has a `manor_user_id` linked to their entity_id). Best-effort:
+    a billing failure must never roll back a meeting that is already done.
+    """
+    try:
+        from api.config.edition import ENABLE_MANOR_BILLING
+        if not ENABLE_MANOR_BILLING:
+            return
+        from api.services.manor_billing_service import charge_credits
+        from api.services.local_auth_service import get_manor_user_id_by_entity_id
+
+        manor_user_id = get_manor_user_id_by_entity_id(entity_id)
+        if not manor_user_id:
+            return  # Not a Manor-linked user — nothing to bill upstream
+        charge_credits(
+            manor_user_id=manor_user_id,
+            transcription_minutes=transcription_minutes,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            meeting_id=meeting_id,
+        )
+    except Exception as e:
+        # Never raise from billing — log and keep going.
+        from loguru import logger
+        logger.warning(f"Manor billing call failed for entity_id={entity_id}: {e}")
 
 # Celery configuration
 celery_app = Celery(
@@ -381,14 +413,16 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
             }
 
             summarization_tokens = notes.get("token_cost", {})
-            _report_token_usage(
+            _charge_manor_credits(
                 entity_id=meeting.entity_id,
+                transcription_minutes=transcription_cost.get("duration_minutes", 0) or 0,
                 input_tokens=summarization_tokens.get("summary", {}).get("prompt_tokens", 0)
                     + summarization_tokens.get("key_points", {}).get("prompt_tokens", 0)
                     + summarization_tokens.get("action_items", {}).get("prompt_tokens", 0),
                 output_tokens=summarization_tokens.get("summary", {}).get("completion_tokens", 0)
                     + summarization_tokens.get("key_points", {}).get("completion_tokens", 0)
                     + summarization_tokens.get("action_items", {}).get("completion_tokens", 0),
+                meeting_id=str(meeting_id),
             )
 
             # Update meeting with results

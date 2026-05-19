@@ -54,6 +54,9 @@ def init_users_table():
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS stt_api_key VARCHAR(512);
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS stt_base_url VARCHAR(255);
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS webhook_url VARCHAR(500);
+                -- Manor AI SSO linkage. NULL for users created via local auth.
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS manor_user_id VARCHAR(128);
+                CREATE INDEX IF NOT EXISTS idx_users_manor_user_id ON users(manor_user_id);
             """)
             conn.commit()
             logger.info("Users table initialized")
@@ -281,6 +284,66 @@ def get_webhook_url_by_entity_id(entity_id: int) -> Optional[str]:
             return None
     except Exception as e:
         logger.debug(f"Get webhook by entity_id error: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def upsert_oauth_user(email: str, manor_user_id: str, name: str = "") -> Optional[Dict[str, Any]]:
+    """Create or update a user authenticated via Manor SSO.
+
+    OAuth users do not own a password — `password_hash` stores a sentinel that
+    bcrypt will reject, so password login can't be used against the account.
+    Existing local users with the same email get their `manor_user_id` linked
+    (and name refreshed if missing) so a returning customer can keep their data.
+    """
+    init_users_table()
+    conn = _get_db_connection()
+    sentinel = "!oauth"  # bcrypt.checkpw will return False against this
+    email = email.lower().strip()
+    safe_name = (name or email.split("@")[0]).strip()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, email, name, manor_user_id FROM users WHERE email = %s", (email,))
+            existing = cur.fetchone()
+            if existing:
+                cur.execute(
+                    "UPDATE users SET manor_user_id = %s, "
+                    "name = COALESCE(NULLIF(name, ''), %s), updated_at = NOW() "
+                    "WHERE email = %s "
+                    "RETURNING id, email, name, manor_user_id",
+                    (manor_user_id, safe_name, email),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO users (email, password_hash, name, manor_user_id) "
+                    "VALUES (%s, %s, %s, %s) "
+                    "RETURNING id, email, name, manor_user_id",
+                    (email, sentinel, safe_name, manor_user_id),
+                )
+            user = cur.fetchone()
+            conn.commit()
+            return dict(user) if user else None
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Upsert OAuth user error: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def get_manor_user_id_by_entity_id(entity_id: int) -> Optional[str]:
+    """Look up the Manor user id for a given local entity_id (used by billing)."""
+    conn = _get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT email, manor_user_id FROM users WHERE manor_user_id IS NOT NULL")
+            for row in cur.fetchall():
+                if _stable_entity_id(row["email"]) == entity_id:
+                    return row["manor_user_id"]
+            return None
+    except Exception as e:
+        logger.debug(f"Lookup manor_user_id by entity_id error: {e}")
         return None
     finally:
         conn.close()
