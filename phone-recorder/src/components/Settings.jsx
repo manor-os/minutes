@@ -42,6 +42,7 @@ function Settings({ user, onClose, onUpdate }) {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
@@ -296,6 +297,10 @@ function Settings({ user, onClose, onUpdate }) {
 
   const handleDeleteAccount = async () => {
     setErrorMessage("");
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
+      setErrorMessage('Type "DELETE" to confirm — case-insensitive.');
+      return;
+    }
     if (!deletePassword) {
       setErrorMessage("Please enter your password to confirm deletion.");
       return;
@@ -766,12 +771,38 @@ function Settings({ user, onClose, onUpdate }) {
                         margin: "0 0 8px 0",
                       }}
                     >
-                      This action is irreversible. All your meetings and data
-                      will be permanently deleted.
+                      This action is irreversible.
                     </p>
+                    <ul
+                      style={{
+                        margin: "0 0 12px 0",
+                        paddingLeft: "20px",
+                        fontSize: "13px",
+                        color: "var(--text-secondary)",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      <li>All your meetings, transcripts, and summaries</li>
+                      <li>Audio recordings stored on the server</li>
+                      <li>Your saved API keys and preferences</li>
+                    </ul>
+                    <div className="form-group">
+                      <label htmlFor="deleteConfirmText">
+                        Type <strong>DELETE</strong> to confirm
+                      </label>
+                      <input
+                        id="deleteConfirmText"
+                        type="text"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder="DELETE"
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                      />
+                    </div>
                     <div className="form-group">
                       <label htmlFor="deletePassword">
-                        Enter your password to confirm
+                        Enter your password
                       </label>
                       <input
                         id="deletePassword"
@@ -779,6 +810,7 @@ function Settings({ user, onClose, onUpdate }) {
                         value={deletePassword}
                         onChange={(e) => setDeletePassword(e.target.value)}
                         placeholder="Your password"
+                        autoComplete="current-password"
                       />
                     </div>
                     <div
@@ -787,16 +819,22 @@ function Settings({ user, onClose, onUpdate }) {
                       <button
                         className="btn-danger"
                         onClick={handleDeleteAccount}
-                        disabled={deleteLoading}
+                        disabled={
+                          deleteLoading ||
+                          deleteConfirmText.trim().toUpperCase() !== "DELETE" ||
+                          !deletePassword
+                        }
                       >
-                        {deleteLoading ? "Deleting..." : "Confirm Delete"}
+                        {deleteLoading ? "Deleting…" : "Permanently delete account"}
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => {
                           setShowDeleteConfirm(false);
                           setDeletePassword("");
+                          setDeleteConfirmText("");
                         }}
+                        disabled={deleteLoading}
                       >
                         Cancel
                       </button>
