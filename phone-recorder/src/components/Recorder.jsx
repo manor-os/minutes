@@ -9,16 +9,67 @@ const STT_MODE = import.meta.env.VITE_STT_MODE || 'cloud';
 const LLM_MODE = import.meta.env.VITE_LLM_MODE || 'cloud';
 const IS_LOCAL = STT_MODE === 'local' && LLM_MODE === 'local';
 
+// Translate getUserMedia / MediaRecorder errors into instructions the user
+// can actually act on. Returns { title, body, action } shape for the inline
+// panel. Falls through to a generic message for unknown errors.
+function describeMicError(err) {
+  const name = err?.name || "";
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return {
+      title: "Microphone permission denied",
+      body:
+        "Your browser blocked microphone access. Click the lock or camera icon next to the address bar and allow microphone for this site, then try again.",
+    };
+  }
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return {
+      title: "No microphone found",
+      body:
+        "We couldn't detect a microphone. Plug one in (or check your system's audio settings) and try again.",
+    };
+  }
+  if (name === "NotReadableError" || name === "TrackStartError") {
+    return {
+      title: "Microphone is busy",
+      body:
+        "Another app (Zoom, Voice Memos, a browser tab, etc.) is using your microphone. Close it and try again.",
+    };
+  }
+  if (name === "OverconstrainedError") {
+    return {
+      title: "Microphone doesn't support the required settings",
+      body: "Try a different microphone or restart your browser.",
+    };
+  }
+  if (name === "SecurityError") {
+    return {
+      title: "Recording blocked by the browser",
+      body:
+        "Recording requires a secure connection (https://) or localhost. Open this app over HTTPS and try again.",
+    };
+  }
+  return {
+    title: "Couldn't start recording",
+    body:
+      (err?.message && err.message.length < 200)
+        ? err.message
+        : "Something went wrong starting the microphone. Refresh the page and try again.",
+  };
+}
+
+
 function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotification, hidden, onOpenSettings }) {
   const [recordingTime, setRecordingTime] = useState(0);
   const [meetingTitle, setMeetingTitle] = useState('');
   const [meetingNotes, setMeetingNotes] = useState('');
   const [liveSegments, setLiveSegments] = useState([]);
   const [liveStatus, setLiveStatus] = useState('');
+  const [liveOffline, setLiveOffline] = useState(false);
   const [mode, setMode] = useState('record'); // 'record' | 'upload'
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('general');
   const [apiKeyWarning, setApiKeyWarning] = useState(null); // null | 'stt' | 'both'
+  const [micError, setMicError] = useState(null); // { title, body } | null
 
   // Upload state
   const [uploadFile, setUploadFile] = useState(null);
@@ -97,6 +148,15 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
   };
 
   const startRecording = async () => {
+    setMicError(null);
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setMicError({
+        title: "Recording isn't supported in this browser",
+        body:
+          "Use a recent version of Chrome, Safari, Firefox, or Edge — and make sure the page is served over HTTPS.",
+      });
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 }
@@ -121,16 +181,24 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
         setRecordingTime(0);
         setMeetingTitle('');
         setMeetingNotes('');
+        setLiveOffline(false);
       };
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsRecording(true);
       setLiveSegments([]);
-      setLiveStatus('Connecting...');
+      setLiveStatus('Connecting…');
+      setLiveOffline(false);
       startLiveTranscription(stream);
     } catch (error) {
       console.error('Error starting recording:', error);
-      if (onNotification) onNotification({ message: 'Microphone access denied. Please allow microphone permission.', type: 'error' });
+      const described = describeMicError(error);
+      // Show an inline, persistent panel — toasts disappear and leave the
+      // user staring at a recorder that looks ready but isn't.
+      setMicError(described);
+      if (onNotification) {
+        onNotification({ message: described.title, type: "error" });
+      }
     }
   };
 
@@ -190,7 +258,13 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
       };
 
       ws.onclose = () => setLiveStatus('');
-      ws.onerror = () => setLiveStatus('Live transcription unavailable');
+      ws.onerror = () => {
+        // The audio is still being captured locally — only the live preview
+        // is offline. Make that distinction explicit so the user doesn't
+        // think the whole recording failed.
+        setLiveStatus('Live preview unavailable');
+        setLiveOffline(true);
+      };
     } catch (err) {
       setLiveStatus('Live transcription unavailable');
     }
@@ -355,6 +429,29 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
                   </div>
                 )}
 
+                {micError && (
+                  <div className="mic-error" role="alert">
+                    <div className="mic-error-title">{micError.title}</div>
+                    <div className="mic-error-body">{micError.body}</div>
+                    <div className="mic-error-actions">
+                      <button
+                        type="button"
+                        className="mic-error-retry"
+                        onClick={() => { setMicError(null); startRecording(); }}
+                      >
+                        Try again
+                      </button>
+                      <button
+                        type="button"
+                        className="mic-error-dismiss"
+                        onClick={() => setMicError(null)}
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <button className="btn-record btn-start" onClick={handleStartRecording}>
                   <MicIcon size={20} />
                   Start Recording
@@ -490,7 +587,11 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
           </div>
           <div className="live-panel-body" ref={scrollRef}>
             {liveSegments.length === 0 ? (
-              <p className="live-panel-empty">Listening... transcript will appear as you speak.</p>
+              <p className="live-panel-empty">
+                {liveOffline
+                  ? "Live preview is offline, but your audio is still being recorded — the full transcript will be ready when you stop."
+                  : "Listening… your words will show up here in about 3 seconds. The recording continues even if the preview lags."}
+              </p>
             ) : (
               liveSegments.map((seg, i) => (
                 <div key={seg.id || i} className="live-panel-segment">
