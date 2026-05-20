@@ -22,6 +22,7 @@ from api.config.edition import (
     ENABLE_MANOR_SSO,
     MANOR_LOGIN_SUCCESS_REDIRECT,
     MANOR_LOGIN_FAILURE_REDIRECT,
+    MANOR_ALLOWED_FINAL_REDIRECTS,
 )
 from api.services import manor_auth_service
 
@@ -374,15 +375,32 @@ def _redirect_with_error(base_url: str, error: str) -> RedirectResponse:
     return RedirectResponse(url=f"{base_url}{sep}{urlencode({'error': error})}", status_code=302)
 
 
+@router.get("/manor/enabled")
+async def manor_sso_enabled():
+    """Tells clients (browser extension, web app) whether to show the
+    \"Sign in with Manor\" button."""
+    return JSONResponse({
+        "enabled": bool(ENABLE_MANOR_SSO and manor_auth_service.is_configured()),
+    })
+
+
 @router.get("/manor/login")
 async def manor_login(redirect: Optional[str] = None):
     """Kick off the Manor OAuth flow. `redirect` is optional and lets the
     frontend specify where the browser should land after a successful login —
-    falls back to MANOR_LOGIN_SUCCESS_REDIRECT."""
+    falls back to MANOR_LOGIN_SUCCESS_REDIRECT.
+
+    The supplied redirect is validated against an allowlist so that an
+    attacker can't trick a logged-in user into starting the flow with a
+    `?redirect=https://evil.com` that would receive the minutes JWT."""
     if not ENABLE_MANOR_SSO:
         raise HTTPException(status_code=404, detail="Manor SSO is not enabled in this edition")
     if not manor_auth_service.is_configured():
         raise HTTPException(status_code=503, detail="Manor SSO is not configured on this server")
+    if redirect and not manor_auth_service.is_allowed_redirect(
+        redirect, MANOR_LOGIN_SUCCESS_REDIRECT, MANOR_ALLOWED_FINAL_REDIRECTS
+    ):
+        raise HTTPException(status_code=400, detail="redirect target is not allowed")
 
     state = manor_auth_service.build_state(post_login_redirect=redirect or "")
     return RedirectResponse(url=manor_auth_service.build_authorize_url(state), status_code=302)
@@ -399,39 +417,45 @@ async def manor_callback(
     if not ENABLE_MANOR_SSO:
         raise HTTPException(status_code=404, detail="Manor SSO is not enabled in this edition")
 
+    # Before state can be verified we don't know where the user wanted to
+    # land — fall back to the configured failure target.
     if error:
         logger.info(f"Manor OAuth callback returned provider error: {error}")
         return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, error)
-
     if not code or not state:
         return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "missing_code")
-
     state_payload = manor_auth_service.parse_state(state)
     if not state_payload:
         return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "invalid_state")
 
+    # State is trusted past this point. Use the caller's preferred landing
+    # page for both success and error so extension popups can see errors too.
+    requested_target = (state_payload.get("redirect") or "").strip()
+    error_target = requested_target or MANOR_LOGIN_FAILURE_REDIRECT
+    success_target = requested_target or MANOR_LOGIN_SUCCESS_REDIRECT
+
     token_response = manor_auth_service.exchange_code_for_token(code)
     if not token_response or "access_token" not in token_response:
-        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "token_exchange_failed")
+        return _redirect_with_error(error_target, "token_exchange_failed")
     access_token = token_response["access_token"]
 
     userinfo = manor_auth_service.fetch_userinfo(access_token)
     if not userinfo:
-        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "userinfo_failed")
+        return _redirect_with_error(error_target, "userinfo_failed")
 
     manor_user_id = str(userinfo.get("id") or userinfo.get("sub") or "").strip()
     email = (userinfo.get("email") or "").strip().lower()
     name = (userinfo.get("name") or userinfo.get("full_name") or "").strip()
     if not manor_user_id or not email:
-        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "invalid_userinfo")
+        return _redirect_with_error(error_target, "invalid_userinfo")
 
     active, _sub = manor_auth_service.check_minutes_subscription(access_token)
     if not active:
-        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "no_subscription")
+        return _redirect_with_error(error_target, "no_subscription")
 
     user = upsert_oauth_user(email=email, manor_user_id=manor_user_id, name=name)
     if not user:
-        return _redirect_with_error(MANOR_LOGIN_FAILURE_REDIRECT, "user_provisioning_failed")
+        return _redirect_with_error(error_target, "user_provisioning_failed")
 
     minutes_token = generate_token({
         "id": str(user["id"]),
@@ -439,14 +463,13 @@ async def manor_callback(
         "name": user["name"],
     })
 
-    target = state_payload.get("redirect") or MANOR_LOGIN_SUCCESS_REDIRECT
     params = urlencode({
         "token": minutes_token,
         "entity_id": _stable_entity_id(user["email"]),
         "email": user["email"],
     })
-    sep = "&" if "?" in target else "?"
-    return RedirectResponse(url=f"{target}{sep}{params}", status_code=302)
+    sep = "&" if "?" in success_target else "?"
+    return RedirectResponse(url=f"{success_target}{sep}{params}", status_code=302)
 
 
 # Initialize local users table on import (all editions now use local auth)

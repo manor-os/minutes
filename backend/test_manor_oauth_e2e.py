@@ -213,6 +213,53 @@ ok("propagates provider error",
    r.status_code == 302 and qs.get("error") == "access_denied", f"loc={loc}")
 
 print()
+print("=== 6. GET /api/auth/manor/enabled ===")
+r = client.get("/api/auth/manor/enabled")
+ok("returns 200", r.status_code == 200, f"status={r.status_code}")
+ok("reports enabled=true (cloud + configured)", r.json().get("enabled") is True, f"body={r.json()}")
+
+print()
+print("=== 7. Redirect allowlist ===")
+# A Chrome-extension redirect URL must be accepted out-of-the-box.
+ext_redirect = "https://abcdef0123456789.chromiumapp.org/"
+r = client.get(f"/api/auth/manor/login?redirect={up.quote(ext_redirect, safe='')}")
+ok("chromiumapp.org redirect accepted", r.status_code == 302, f"status={r.status_code}, body={r.text[:200]}")
+# Same-origin as MANOR_LOGIN_SUCCESS_REDIRECT must be accepted.
+r = client.get(f"/api/auth/manor/login?redirect={up.quote(os.environ['MANOR_LOGIN_SUCCESS_REDIRECT'], safe='')}")
+ok("configured success-redirect accepted", r.status_code == 302)
+# Anything else must be rejected.
+r = client.get(f"/api/auth/manor/login?redirect=https://evil.example.com/steal")
+ok("attacker-controlled redirect rejected", r.status_code == 400, f"status={r.status_code}")
+
+print()
+print("=== 8. Extension flow: errors land on the requested redirect ===")
+SUBSCRIPTION_STATE["active"] = False
+ext_state = mas.build_state(ext_redirect)
+r = client.get(f"/api/auth/manor/callback?code={TEST_AUTH_CODE}&state={ext_state}")
+loc = r.headers.get("location", "")
+parsed_loc = up.urlparse(loc)
+qs = dict(up.parse_qsl(parsed_loc.query))
+ok(
+    "error redirects to extension URL (chromiumapp.org), not configured failure target",
+    parsed_loc.netloc.endswith(".chromiumapp.org") and qs.get("error") == "no_subscription",
+    f"loc={loc}",
+)
+
+print()
+print("=== 9. Extension flow: success lands on the requested redirect ===")
+SUBSCRIPTION_STATE["active"] = True
+ext_state = mas.build_state(ext_redirect)
+r = client.get(f"/api/auth/manor/callback?code={TEST_AUTH_CODE}&state={ext_state}")
+loc = r.headers.get("location", "")
+parsed_loc = up.urlparse(loc)
+qs = dict(up.parse_qsl(parsed_loc.query))
+ok(
+    "success redirects to extension URL with token",
+    parsed_loc.netloc.endswith(".chromiumapp.org") and "token" in qs,
+    f"loc={loc[:200]}",
+)
+
+print()
 fails = [r for r in results if r[0].strip() == "FAIL"]
 print(f"=== Summary: {len(results) - len(fails)}/{len(results)} checks passed ===")
 sys.exit(1 if fails else 0)

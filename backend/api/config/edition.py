@@ -28,3 +28,7 @@ MANOR_LOGIN_SUCCESS_REDIRECT = os.getenv(
 MANOR_LOGIN_FAILURE_REDIRECT = os.getenv(
     "MANOR_LOGIN_FAILURE_REDIRECT", "http://localhost:9002/auth/manor"
 )
+# Comma-separated allowlist of extra post-login redirect URL prefixes accepted
+# from the `?redirect=` query param. Browser-extension OAuth domains
+# (chromiumapp.org / extensions.allizom.org) are always allowed.
+MANOR_ALLOWED_FINAL_REDIRECTS = os.getenv("MANOR_ALLOWED_FINAL_REDIRECTS", "")

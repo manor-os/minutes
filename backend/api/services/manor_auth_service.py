@@ -55,6 +55,44 @@ def is_configured() -> bool:
     return bool(MANOR_BASE_URL and MANOR_CLIENT_ID and MANOR_CLIENT_SECRET and MANOR_REDIRECT_URI)
 
 
+# Hosts always allowed as a post-login redirect target — these are URLs the
+# user's own browser owns (Chrome / Firefox extensions) and can't be pointed
+# at an attacker.
+_ALWAYS_ALLOWED_HOST_SUFFIXES = (
+    ".chromiumapp.org",       # Chrome extension OAuth redirect
+    ".extensions.allizom.org",  # Firefox extension OAuth redirect
+)
+
+
+def is_allowed_redirect(url: str, default_target: str, extra_allowed: str = "") -> bool:
+    """Return True if `url` is a permitted post-login redirect target.
+
+    Without an allowlist, OAuth tokens could be exfiltrated by tricking a
+    logged-in user into starting the flow with `?redirect=https://evil.com`.
+
+    Rules:
+    - The configured default target is always allowed.
+    - Browser-extension OAuth redirect domains are always allowed.
+    - Extra prefixes can be added via the MANOR_ALLOWED_FINAL_REDIRECTS env
+      var (comma-separated, matched as URL prefixes).
+    """
+    if not url:
+        return True  # Empty -> the caller falls back to default_target itself
+    if url == default_target or url.startswith(default_target):
+        return True
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(url).hostname or ""
+    except Exception:
+        return False
+    if any(host.endswith(suf) for suf in _ALWAYS_ALLOWED_HOST_SUFFIXES):
+        return True
+    for prefix in [p.strip() for p in (extra_allowed or "").split(",") if p.strip()]:
+        if url.startswith(prefix):
+            return True
+    return False
+
+
 # --- State token (CSRF + post-login redirect) ------------------------------
 
 def build_state(post_login_redirect: str = "") -> str:

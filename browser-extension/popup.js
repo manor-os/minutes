@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!isAuthenticated) {
     showLoginSection();
     setupLoginForm();
+    setupManorLogin();
     return; // Don't proceed with recording setup if not authenticated
   }
   
@@ -249,6 +250,81 @@ function setupLoginForm() {
     }
   });
 }
+
+// Wire up the "Sign in with Manor AI" button. Only shown when the backend
+// reports that Manor SSO is enabled & configured. Uses
+// chrome.identity.launchWebAuthFlow so we run the OAuth dance in a Chrome-
+// owned popup window and capture the final redirect URL the backend lands
+// us on (which carries the minutes JWT as ?token=...).
+async function setupManorLogin() {
+  const block = document.getElementById('manorLoginBlock');
+  const btn = document.getElementById('btnManorLogin');
+  if (!block || !btn || !chrome?.identity?.launchWebAuthFlow) return;
+
+  // Ask the backend whether Manor SSO is on (community editions return false).
+  try {
+    const resp = await fetch(`${API_BASE_URL}/api/auth/manor/enabled`);
+    const data = await resp.json();
+    if (!data.enabled) return;  // Leave the block hidden
+  } catch (e) {
+    return;  // Backend unreachable — hide the option rather than dead-end the user
+  }
+  block.classList.remove('hidden');
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Opening Manor login…';
+    const redirectUri = chrome.identity.getRedirectURL();
+    const startUrl = `${API_BASE_URL}/api/auth/manor/login?redirect=${encodeURIComponent(redirectUri)}`;
+    try {
+      const finalUrl = await new Promise((resolve, reject) => {
+        chrome.identity.launchWebAuthFlow({ url: startUrl, interactive: true }, (responseUrl) => {
+          if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+          if (!responseUrl) return reject(new Error('No response URL from Manor login'));
+          resolve(responseUrl);
+        });
+      });
+      const url = new URL(finalUrl);
+      const params = url.searchParams;
+      const err = params.get('error');
+      if (err) {
+        const friendly = {
+          no_subscription: 'No active Minutes subscription on your Manor AI account.',
+          token_exchange_failed: 'Manor login failed — please try again.',
+          userinfo_failed: 'Could not fetch your Manor profile.',
+          invalid_state: 'Login session expired — please try again.',
+        }[err] || `Manor login failed (${err})`;
+        showError(friendly);
+        return;
+      }
+      const token = params.get('token');
+      if (!token) {
+        showError('Manor login returned no token.');
+        return;
+      }
+      await chrome.storage.local.set({
+        auth_token: token,
+        entity_id: params.get('entity_id') || '',
+        user_email: params.get('email') || '',
+        user_name: params.get('name') || '',
+      });
+      isAuthenticated = true;
+      window.location.reload();
+    } catch (e) {
+      console.error('Manor OAuth flow error:', e);
+      // User cancelling the popup throws — show a softer message in that case.
+      const msg = (e && e.message && e.message.toLowerCase().includes('user'))
+        ? 'Login cancelled.'
+        : 'Manor login failed. Please try again.';
+      showError(msg);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+}
+
 
 // Handle logout
 async function handleLogout() {
