@@ -137,7 +137,11 @@ function MeetingList({ recordings, onRefresh, onNotification, currentUser, searc
         return updated;
       });
       if (onNotification) {
-        onNotification({ message: `Failed to retry: ${error.message}`, type: 'error' });
+        console.error("Retry failed:", error);
+        onNotification({
+          message: "Couldn't restart processing — check your connection and try again.",
+          type: 'error',
+        });
       }
     }
   };
@@ -163,25 +167,25 @@ function MeetingList({ recordings, onRefresh, onNotification, currentUser, searc
         text: 'Uploading',
         class: 'status-uploading',
         icon: <UploadIcon size={14} />,
-        description: 'Uploading recording to server...'
+        description: 'Sending the recording to the server…'
       },
-      processing: { 
-        text: 'Processing', 
+      processing: {
+        text: 'Processing',
         class: 'status-processing',
         icon: <LoaderIcon size={14} />,
-        description: 'Transcribing and generating summary...'
+        description: 'Transcribing and summarizing — usually 30–60 seconds.'
       },
-      completed: { 
-        text: 'Completed', 
+      completed: {
+        text: 'Completed',
         class: 'status-completed',
         icon: <CheckCircleIcon size={12} />,
-        description: 'Ready to view'
+        description: 'Tap to view the transcript and summary.'
       },
-      failed: { 
-        text: 'Failed', 
+      failed: {
+        text: 'Failed',
         class: 'status-failed',
         icon: <CloseIcon size={14} />,
-        description: 'Processing failed'
+        description: "Something went wrong — see the details below to fix it."
       }
     };
     const statusInfo = statusMap[status] || { 
@@ -229,13 +233,21 @@ function MeetingList({ recordings, onRefresh, onNotification, currentUser, searc
       ));
     } catch (error) {
       console.error('Error toggling favorite:', error);
-      if (onNotification) onNotification({ message: `Failed to toggle favorite: ${error.message}`, type: 'error' });
+      console.error("Toggle favorite failed:", error);
+      if (onNotification) onNotification({
+        message: "Couldn't update favorite. Please try again.",
+        type: 'error',
+      });
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Delete ${selectedIds.size} meeting(s)? This cannot be undone.`)) return;
+    const n = selectedIds.size;
+    const msg = n === 1
+      ? "Permanently delete this meeting? The audio, transcript, and summary will be removed and can't be recovered."
+      : `Permanently delete ${n} meetings? The audio, transcripts, and summaries will all be removed and can't be recovered.`;
+    if (!window.confirm(msg)) return;
     try {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Content-Type': 'application/json' };
@@ -255,7 +267,11 @@ function MeetingList({ recordings, onRefresh, onNotification, currentUser, searc
       onRefresh();
     } catch (error) {
       console.error('Error bulk deleting:', error);
-      if (onNotification) onNotification({ message: `Failed to delete: ${error.message}`, type: 'error' });
+      console.error("Bulk delete failed:", error);
+      if (onNotification) onNotification({
+        message: "Couldn't delete the selected meetings. Please try again.",
+        type: 'error',
+      });
     }
   };
 
