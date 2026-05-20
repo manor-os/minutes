@@ -40,7 +40,7 @@ app.include_router(meetings.router)  # Meeting routes (protected - JWT or API ke
 app.include_router(integration.router)  # Integration routes (API key only)
 app.include_router(realtime.router)  # Real-time transcription WebSocket
 
-from api.config.edition import IS_CLOUD
+from api.config.edition import IS_CLOUD, ENABLE_MCP
 # Cloud-only routes (analytics, teams, billing) — registered only in cloud mode
 if IS_CLOUD:
     try:
@@ -50,6 +50,19 @@ if IS_CLOUD:
         app.include_router(billing.router)
     except ImportError:
         pass  # Cloud modules not available
+
+# MCP server: exposes meeting CRUD as MCP tools over Streamable HTTP at /mcp.
+# Lets agents (Claude Desktop, the Claude Agent SDK, etc.) list / read /
+# update / delete meetings using the same JWT used by the REST API.
+if ENABLE_MCP:
+    try:
+        from api.mcp_server import get_mcp_server
+        _mcp = get_mcp_server()
+        if _mcp is not None:
+            app.mount("/mcp", _mcp.streamable_http_app())
+    except Exception as e:
+        from loguru import logger
+        logger.warning(f"Could not mount MCP server at /mcp: {e}")
 
 
 @app.get("/")

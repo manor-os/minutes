@@ -38,6 +38,42 @@ def _load_user_stt_config() -> dict:
         return {}
 
 
+def _charge_realtime_session(
+    entity_id: Optional[int],
+    session_id: str,
+    seconds_transcribed: float,
+    stt_byok: bool,
+) -> None:
+    """Bill a finished realtime transcription session to Manor.
+
+    Mirrors `_charge_manor_credits` in celery_tasks but for the websocket
+    pipeline. Skipped when STT was BYOK (user's own key or local mode).
+    """
+    if entity_id is None or seconds_transcribed <= 0 or stt_byok:
+        return
+    try:
+        from api.config.edition import ENABLE_MANOR_BILLING
+        if not ENABLE_MANOR_BILLING:
+            return
+        from api.services.manor_billing_service import charge_credits
+        from api.services.local_auth_service import get_manor_user_id_by_entity_id
+
+        manor_user_id = get_manor_user_id_by_entity_id(int(entity_id))
+        if not manor_user_id:
+            return
+        charge_credits(
+            manor_user_id=manor_user_id,
+            transcription_minutes=round(seconds_transcribed / 60.0, 4),
+            input_tokens=0,
+            output_tokens=0,
+            # Idempotency-keyed by session so an interrupted+reconnected client
+            # can't accidentally double-charge; new session id = new charge.
+            meeting_id=f"realtime:{session_id}",
+        )
+    except Exception as e:
+        logger.warning(f"Realtime Manor billing failed for entity_id={entity_id}: {e}")
+
+
 @router.websocket("/ws/transcribe")
 async def websocket_transcribe(websocket: WebSocket):
     """
@@ -53,16 +89,25 @@ async def websocket_transcribe(websocket: WebSocket):
     """
     # Authenticate WebSocket connection
     token = websocket.query_params.get("token") or websocket.headers.get("authorization", "").replace("Bearer ", "")
+    entity_id: Optional[int] = None
     if token:
         try:
             import jwt
             payload = jwt.decode(token, os.getenv("JWT_SECRET", ""), algorithms=["HS256"])
+            if "entity_id" in payload:
+                try:
+                    entity_id = int(payload["entity_id"])
+                except (TypeError, ValueError):
+                    entity_id = None
         except Exception:
             await websocket.close(code=4001, reason="Invalid token")
             return
     # No token provided — allow unauthenticated connections (local auth mode)
 
     await websocket.accept()
+
+    import uuid
+    session_id = uuid.uuid4().hex
 
     language = None
     audio_buffer = bytearray()
@@ -71,6 +116,9 @@ async def websocket_transcribe(websocket: WebSocket):
     total_audio_duration = 0.0
 
     use_local_stt = STT_MODE == "local"
+    # Tracks whether the STT call was billed to a user-owned key (BYOK) so we
+    # know not to charge Manor for those minutes at disconnect time.
+    stt_byok = use_local_stt
 
     client = None
     effective_base_url = None
@@ -82,6 +130,9 @@ async def websocket_transcribe(websocket: WebSocket):
         effective_key = user_stt_config.get("stt_api_key") or env_key
         # Only use a custom base URL when explicitly set — OpenAI SDK defaults to api.openai.com
         effective_base_url = user_stt_config.get("stt_base_url") or env_base_url or None
+        # If the user supplied their own key, Manor isn't the underlying provider.
+        if user_stt_config.get("stt_api_key"):
+            stt_byok = True
 
         if not effective_key:
             await websocket.send_json({"type": "error", "message": "No OpenAI API key configured. Set your key in Settings."})
@@ -111,6 +162,7 @@ async def websocket_transcribe(websocket: WebSocket):
                         if client_key:
                             client_base_url = msg.get("stt_base_url") or effective_base_url
                             client = OpenAI(api_key=client_key, base_url=client_base_url)
+                            stt_byok = True  # Client-supplied key — not Manor's
                         await websocket.send_json({"type": "status", "message": f"Ready. Language: {language or 'auto-detect'}"})
                     elif msg.get("type") == "stop":
                         if len(audio_buffer) > 0:
@@ -155,6 +207,17 @@ async def websocket_transcribe(websocket: WebSocket):
             await websocket.send_json({"type": "error", "message": "An internal error occurred. Please try again."})
         except Exception:
             pass
+    finally:
+        # Bill the realtime session even on error/disconnect. Runs in a
+        # threadpool because charge_credits uses sync httpx and must not
+        # block the event loop.
+        if total_audio_duration > 0:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                _charge_realtime_session,
+                entity_id, session_id, total_audio_duration, stt_byok,
+            )
 
 
 async def _transcribe_buffer(client, audio_buffer: bytearray, language: Optional[str] = None, use_local: bool = False) -> str:

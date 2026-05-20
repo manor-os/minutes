@@ -56,12 +56,18 @@ def _charge_manor_credits(
     input_tokens: int,
     output_tokens: int,
     meeting_id: Optional[str] = None,
+    stt_byok: bool = False,
+    llm_byok: bool = False,
 ) -> None:
     """Charge a completed meeting to the user's Manor AI credit balance.
 
     No-op unless Manor billing is enabled and the user originated from Manor
     SSO (i.e. has a `manor_user_id` linked to their entity_id). Best-effort:
     a billing failure must never roll back a meeting that is already done.
+
+    BYOK skip: when the user supplied their own STT or LLM key (or ran in
+    local mode) they paid the provider directly — Manor must not double-bill
+    for that portion. The corresponding usage is zeroed out before sending.
     """
     try:
         from api.config.edition import ENABLE_MANOR_BILLING
@@ -73,11 +79,23 @@ def _charge_manor_credits(
         manor_user_id = get_manor_user_id_by_entity_id(entity_id)
         if not manor_user_id:
             return  # Not a Manor-linked user — nothing to bill upstream
+
+        billed_minutes = 0.0 if stt_byok else transcription_minutes
+        billed_input = 0 if llm_byok else input_tokens
+        billed_output = 0 if llm_byok else output_tokens
+        if not billed_minutes and not billed_input and not billed_output:
+            from loguru import logger
+            logger.info(
+                f"Skipping Manor charge for meeting={meeting_id}: full BYOK "
+                f"(stt_byok={stt_byok}, llm_byok={llm_byok})"
+            )
+            return
+
         charge_credits(
             manor_user_id=manor_user_id,
-            transcription_minutes=transcription_minutes,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
+            transcription_minutes=billed_minutes,
+            input_tokens=billed_input,
+            output_tokens=billed_output,
             meeting_id=meeting_id,
         )
     except Exception as e:
@@ -413,6 +431,12 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
             }
 
             summarization_tokens = notes.get("token_cost", {})
+            # BYOK = the user paid the provider directly. Either they supplied
+            # their own STT/LLM key, or the worker is running in fully local
+            # mode (faster-whisper / Ollama). In all those cases Manor is not
+            # the underlying provider, so we must not bill the user a second time.
+            stt_byok = bool(user_stt_key) or stt_mode == "local"
+            llm_byok = bool(effective_user_llm_key) or llm_mode == "local"
             _charge_manor_credits(
                 entity_id=meeting.entity_id,
                 transcription_minutes=transcription_cost.get("duration_minutes", 0) or 0,
@@ -423,6 +447,8 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
                     + summarization_tokens.get("key_points", {}).get("completion_tokens", 0)
                     + summarization_tokens.get("action_items", {}).get("completion_tokens", 0),
                 meeting_id=str(meeting_id),
+                stt_byok=stt_byok,
+                llm_byok=llm_byok,
             )
 
             # Update meeting with results
