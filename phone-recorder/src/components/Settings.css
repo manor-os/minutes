@@ -351,6 +351,27 @@
     max-width: 100%;
     max-height: 100vh;
     border-radius: 0;
+    /* Honor iOS notch + home indicator so close buttons aren't blocked. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* All clickable rows in Settings stay at finger-friendly height. */
+  .settings-content button,
+  .settings-content input,
+  .settings-content select,
+  .settings-content .tab-button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-content .form-group label {
+    font-size: 13px;
+  }
+  .settings-content .form-group input,
+  .settings-content .form-group select {
+    font-size: 16px; /* iOS no-zoom */
   }
 }
 

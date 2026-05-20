@@ -916,6 +916,9 @@
     max-width: 100%;
     max-height: 100vh;
     border-radius: 0;
+    /* Respect iPhone notch + bottom home indicator. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .detail-header {
@@ -927,9 +930,39 @@
     border-radius: 0;
   }
 
+  .detail-actions button {
+    min-height: 44px;
+  }
+
   .action-meta {
     flex-direction: column;
     gap: 6px;
+  }
+
+  /* Tab strip inside the detail modal — horizontal scroll on narrow screens
+     instead of wrapping (or being chopped off). */
+  .detail-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .detail-tabs::-webkit-scrollbar { display: none; }
+  .detail-tabs .tab-button,
+  .detail-tabs button {
+    flex-shrink: 0;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .meeting-detail-modal {
+    font-size: 14px;
+  }
+  .detail-header h2,
+  .detail-header h1 {
+    font-size: 18px;
   }
 }
 

@@ -816,4 +816,46 @@
   .recording-time {
     font-size: 32px;
   }
+
+  /* Mode tabs need to be reliably tappable on phones. */
+  .recorder-tab {
+    min-height: 44px;
+    padding: 12px 14px;
+  }
+
+  /* Big primary record / stop button — already large, but make sure form
+     inputs above it are too. */
+  .recorder-input,
+  .recorder-textarea,
+  .recorder-select {
+    min-height: 44px;
+  }
+
+  .btn-record {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 480px) {
+  .recorder {
+    padding: 14px 10px;
+  }
+  .recorder-body {
+    padding: 20px 16px;
+  }
+  .recorder-hero h2 {
+    font-size: 18px;
+  }
+  .recorder-subtitle {
+    font-size: 13px;
+  }
+  .recording-time {
+    font-size: 28px;
+  }
+
+  /* Live transcript panel: keep some of the recorder visible above it
+     on small screens instead of pushing it off-screen. */
+  .live-panel {
+    margin-top: 12px;
+  }
 }

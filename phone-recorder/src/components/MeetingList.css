@@ -1075,6 +1075,45 @@
 
   .filter-select {
     width: 100%;
+    min-height: 44px;
+  }
+
+  /* Buttons in the action row should be at least 44px tall to be tappable. */
+  .btn-refresh,
+  .btn-select-mode {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  /* Search input grows to fill width on mobile so the magnifier + placeholder
+     don't collide with the right-edge action buttons. */
+  .search-input {
+    min-height: 44px;
+  }
+
+  /* Card actions row (favorite / share / download / delete) — make sure
+     icon buttons aren't cramped under a thumb. */
+  .card-actions button {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Pull the card padding in slightly so titles + summary previews have
+     more breathing room on phones. */
+  .recording-card {
+    padding: 14px 14px 16px;
+  }
+
+  /* Empty state shrinks a touch on narrow viewports. */
+  .empty-state {
+    padding: 40px 18px;
+  }
+  .empty-state-icon {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 16px;
   }
 }
 

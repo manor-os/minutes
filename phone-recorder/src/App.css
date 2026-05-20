@@ -286,12 +286,60 @@ body {
   }
 
   .app-header {
-    padding: 16px 20px;
+    padding: 12px 16px;
+    gap: 12px;
   }
 
   .app-header h1 {
     font-size: 24px;
   }
+
+  .app-logo {
+    height: 26px;
+  }
+
+  /* Touch targets must be at least 44×44 for Apple HIG / 48dp for Material. */
+  .nav-tabs button {
+    padding: 12px 16px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  .theme-toggle-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .app-main {
+    padding: 14px 12px;
+  }
+
+  /* Nav tabs scroll horizontally rather than wrap so the logo can stay
+     on the same line as the tabs even on the narrowest phones. */
+  .nav-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-shrink: 1;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+
+  .nav-tabs button {
+    padding: 10px 14px;
+    white-space: nowrap;
+  }
+}
+
+/* Honor iPhone home-indicator inset so the bottom row isn't covered. */
+.app-main {
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
 /* Theme toggle button */

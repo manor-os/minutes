@@ -389,6 +389,33 @@
   .login-header h1 {
     font-size: 28px;
   }
+
+  .login-form input,
+  .btn-login,
+  .btn-google-login,
+  .btn-manor-login {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-container {
+    /* Pull the card up slightly so it lives above the iOS keyboard when
+       a field is focused, rather than getting hidden behind it. */
+    padding: 16px 12px;
+    align-items: flex-start;
+    padding-top: 8vh;
+  }
+  .login-card {
+    padding: 24px 18px;
+    border-radius: 16px;
+  }
+  .login-header h1 {
+    font-size: 24px;
+  }
+  .login-subtitle {
+    font-size: 13px;
+  }
 }
 
 /* ===== DARK MODE ===== */
