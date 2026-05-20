@@ -121,6 +121,46 @@ function App() {
         }
       }
 
+      // --- Manor SSO callback (query-string based) ---
+      // Backend redirects here with `?token=…&entity_id=…&email=…` on success
+      // or `?error=…` on failure. Detect on initial load before anything else.
+      try {
+        const search = (typeof window !== "undefined" && window.location.search) || "";
+        if (search) {
+          const sp = new URLSearchParams(search);
+          const manorToken = sp.get("token");
+          const manorError = sp.get("error");
+          // Heuristic: only treat this as a Manor callback when the params look
+          // like ours (token+entity_id) or when an explicit error code is set.
+          if (manorToken && sp.get("entity_id")) {
+            localStorage.setItem("auth_token", manorToken);
+            localStorage.setItem("entity_id", sp.get("entity_id"));
+            localStorage.setItem("user_email", sp.get("email") || "");
+            localStorage.setItem("user_name", sp.get("name") || "");
+            try { localStorage.removeItem("manor_login_error"); } catch (_) {}
+            // Strip the query string so a refresh doesn't reuse the token URL
+            try { window.history.replaceState({}, "", "/"); } catch (_) {}
+            setUser({
+              token: manorToken,
+              entity_id: sp.get("entity_id"),
+              email: sp.get("email") || "",
+              name: sp.get("name") || "",
+            });
+            setIsAuthenticated(true);
+            setIsCheckingAuth(false);
+            return;
+          }
+          if (manorError) {
+            // Stash the error for the Login screen to render in plain language.
+            try { localStorage.setItem("manor_login_error", manorError); } catch (_) {}
+            try { window.history.replaceState({}, "", "/"); } catch (_) {}
+            // Fall through to normal auth check so the Login screen renders.
+          }
+        }
+      } catch (manorErr) {
+        console.warn("Error handling Manor callback:", manorErr);
+      }
+
       if (
         hash.includes("access_token=") ||
         pathname.includes("googleCallback")
@@ -903,6 +943,7 @@ function App() {
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}
+            onSwitchToRecorder={() => setView("recorder")}
           />
         )}
         {/* Live transcription is now built into the Recorder */}

@@ -17,6 +17,31 @@ const GOOGLE_REDIRECT_URI =
     ? `${window.location.origin}/googleCallback`
     : "");
 
+// Translate backend OAuth error codes into plain-language messages.
+const MANOR_ERROR_MESSAGES = {
+  no_subscription:
+    "Your Manor AI account doesn't have an active Minutes subscription. Subscribe on Manor AI and try again.",
+  invalid_state:
+    "Login session expired. Please try signing in again.",
+  invalid_userinfo:
+    "We couldn't read your Manor profile. Please try again.",
+  token_exchange_failed:
+    "Manor login failed mid-handshake. Please try again in a moment.",
+  userinfo_failed:
+    "Manor didn't return your profile. Try again, or sign in with email instead.",
+  user_provisioning_failed:
+    "Couldn't link your Manor account to Minutes. Please try again or contact support.",
+  missing_code:
+    "Manor returned an incomplete response. Please retry the login.",
+  access_denied:
+    "Login cancelled.",
+};
+
+function friendlyManorError(code) {
+  if (!code) return "";
+  return MANOR_ERROR_MESSAGES[code] || `Manor login failed (${code}). Please try again.`;
+}
+
 function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,7 +49,32 @@ function Login({ onLoginSuccess }) {
   const [isRegister, setIsRegister] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isManorLoading, setIsManorLoading] = useState(false);
+  const [manorEnabled, setManorEnabled] = useState(false);
   const [error, setError] = useState("");
+
+  // Show a friendly message when the user just bounced off a failed Manor callback.
+  useEffect(() => {
+    try {
+      const stashed = localStorage.getItem("manor_login_error");
+      if (stashed) {
+        setError(friendlyManorError(stashed));
+        localStorage.removeItem("manor_login_error");
+      }
+    } catch (_) {}
+  }, []);
+
+  // Probe the backend for Manor SSO availability (cloud edition + configured).
+  // Failures are silent — if it's not available, the button just stays hidden.
+  useEffect(() => {
+    if (!IS_CLOUD) return;
+    let cancelled = false;
+    fetch(`${API_BASE_URL}/api/auth/manor/enabled`)
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
+      .then((d) => { if (!cancelled) setManorEnabled(!!d.enabled); })
+      .catch(() => { /* hide button */ });
+    return () => { cancelled = true; };
+  }, []);
 
   // Keep login UI clean: do not show persisted Google callback failures.
   // Google auth flow still works; stale diagnostics are cleared silently.
@@ -33,6 +83,18 @@ function Login({ onLoginSuccess }) {
       localStorage.removeItem("google_login_error");
     } catch (_) {}
   }, []);
+
+  const handleManorLogin = () => {
+    setError("");
+    setIsManorLoading(true);
+    const here = typeof window !== "undefined"
+      ? window.location.origin + window.location.pathname
+      : "";
+    // Full-page redirect into the backend, which redirects to Manor's
+    // authorize URL and eventually lands the browser back here with
+    // ?token=… or ?error=… (handled in App.jsx).
+    window.location.href = `${API_BASE_URL}/api/auth/manor/login?redirect=${encodeURIComponent(here)}`;
+  };
 
   const fillDefaultCredentials = () => {
     setEmail(DEFAULT_ADMIN_EMAIL);
@@ -298,11 +360,29 @@ function Login({ onLoginSuccess }) {
               <span>or</span>
             </div>
 
+            {manorEnabled && (
+              <button
+                type="button"
+                className="btn-manor-login"
+                onClick={handleManorLogin}
+                disabled={isLoading || isGoogleLoading || isManorLoading}
+              >
+                {isManorLoading ? (
+                  "Opening Manor login..."
+                ) : (
+                  <>
+                    <span className="manor-icon-mark" aria-hidden="true">M</span>
+                    Sign in with Manor AI
+                  </>
+                )}
+              </button>
+            )}
+
             <button
               type="button"
               className="btn-google-login"
               onClick={handleGoogleLogin}
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading || isGoogleLoading || isManorLoading}
             >
               {isGoogleLoading ? (
                 "Connecting to Google..."

@@ -6,7 +6,7 @@ import MeetingDetail from './MeetingDetail';
 import { CalendarIcon, ClockIcon, UserIcon, MonitorIcon, DollarIcon, StarIcon, CheckCircleIcon, FileTextIcon, AlertCircleIcon, RefreshIcon, LoaderIcon, UploadIcon, CloseIcon, MicIcon, SettingsIcon, SearchIcon } from './Icons';
 import './MeetingList.css';
 
-function MeetingList({ recordings, onRefresh, onNotification, currentUser, searchQuery, sortBy, statusFilter, onSearchChange, onSortChange, onStatusChange, page, totalPages, onPageChange }) {
+function MeetingList({ recordings, onRefresh, onNotification, currentUser, searchQuery, sortBy, statusFilter, onSearchChange, onSortChange, onStatusChange, page, totalPages, onPageChange, onSwitchToRecorder }) {
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [recordingsList, setRecordingsList] = useState(recordings);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -411,8 +411,33 @@ function MeetingList({ recordings, onRefresh, onNotification, currentUser, searc
 
       {recordingsList.length === 0 ? (
         <div className="empty-state">
-          <p>No recordings yet</p>
-          <p className="empty-subtitle">Start recording to see your meetings here</p>
+          <div className="empty-state-icon" aria-hidden="true">
+            <MicIcon size={40} />
+          </div>
+          {(searchQuery || statusFilter) ? (
+            <>
+              <p>No meetings match your filters</p>
+              <p className="empty-subtitle">
+                Try a different search term, or clear the filters to see everything.
+              </p>
+            </>
+          ) : (
+            <>
+              <p>No recordings yet</p>
+              <p className="empty-subtitle">
+                Capture your first meeting and we'll transcribe and summarize it for you.
+              </p>
+              {onSwitchToRecorder && (
+                <button
+                  type="button"
+                  className="empty-state-cta"
+                  onClick={onSwitchToRecorder}
+                >
+                  <MicIcon size={16} /> Start your first recording
+                </button>
+              )}
+            </>
+          )}
         </div>
       ) : (
         <div className="recordings-grid">
