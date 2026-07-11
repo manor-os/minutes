@@ -1,0 +1,22 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+openai==1.87.0
+python-dotenv==1.1.0
+loguru==0.7.3
+pydantic==2.9.0
+sqlalchemy==2.0.41
+psycopg2-binary==2.9.9
+redis==5.2.1
+celery>=5.3.3
+PyJWT==2.8.0
+pymysql==1.1.0
+bcrypt==4.0.1
+httpx>=0.27.0
+faster-whisper>=1.0.0
+minio>=7.2.0
+mcp>=1.0.0
+
+# Optional: speaker diarization (requires HF_TOKEN)
+# pyannote-audio>=3.0
+
