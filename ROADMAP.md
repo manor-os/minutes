@@ -17,11 +17,11 @@
 - [x] MinIO object storage for audio files
 - [x] Dual edition: Community (self-hosted) and Cloud
 - [x] Local mode: faster-whisper + Ollama (no API keys needed)
-- [x] MCP server for Claude Desktop integration (cloud edition)
 - [x] PWA support
 - [x] CSS design system with custom properties
 
 ## Next (v1.1)
+- [ ] MCP server so agents can search meetings and read transcripts
 - [ ] Speaker diarization (who said what) via pyannote-audio
 - [ ] Calendar integration (Google Calendar, Outlook)
 - [ ] Email notifications (SMTP) on meeting completion

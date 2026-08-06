@@ -364,7 +364,7 @@ class TranscriptionService:
             logger.error(f"Chunk-by-chunk transcription failed: {str(e)}")
             raise Exception(f"Chunk-by-chunk transcription failed: {str(e)}")
     
-    def identify_speakers(self, transcript_text: str, segments: list = None) -> list:
+    def identify_speakers(self, transcript_text: str, segments: list = None, *, client, model: str) -> tuple:
         """
         Identify different speakers in the transcript using LLM analysis
         This analyzes the transcript to identify distinct speakers based on:
@@ -372,17 +372,20 @@ class TranscriptionService:
         - Context clues
         - Name mentions
         - Pronoun usage
-        
+
+        `client` and `model` are required: this call costs money, so the caller
+        must resolve the billing route first (see llm_config.resolve_llm) rather
+        than let this method reach for the shared server key on its own. The
+        usage is returned so the caller can report it — dropping it silently
+        would put the spend on nobody's account.
+
         Returns:
-            List of speaker-segmented transcript entries
+            Tuple of (list of speaker-segmented transcript entries, token_info dict)
         """
+        _zero_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         try:
             import json
-            from .llm_config import get_openrouter_client, get_llm_model
 
-            client = get_openrouter_client()
-            model = get_llm_model()
-            
             # Prepare prompt for speaker identification
             if segments:
                 segments_text = "\n".join([f"[{seg.get('start', 0):.1f}s-{seg.get('end', 0):.1f}s] {seg.get('text', '')}" for seg in segments[:20]])
@@ -436,8 +439,15 @@ Return ONLY valid JSON with a "segments" key, no additional text."""
                 response_format={"type": "json_object"}
             )
             
+            usage = response.usage
+            token_info = {
+                "prompt_tokens": usage.prompt_tokens if usage else 0,
+                "completion_tokens": usage.completion_tokens if usage else 0,
+                "total_tokens": usage.total_tokens if usage else 0,
+            }
+
             result = json.loads(response.choices[0].message.content)
-            
+
             # Handle different response formats
             if "segments" in result:
                 segments = result["segments"]
@@ -460,12 +470,15 @@ Return ONLY valid JSON with a "segments" key, no additional text."""
                 if "end_time" not in seg:
                     seg["end_time"] = None
             
-            return segments
-                
+            return segments, token_info
+
         except Exception as e:
             logger.error(f"Speaker identification failed: {str(e)}")
             # Fallback: return transcript as single speaker
-            return [{"speaker": "Speaker 1", "text": transcript_text, "start_time": None, "end_time": None}]
+            return (
+                [{"speaker": "Speaker 1", "text": transcript_text, "start_time": None, "end_time": None}],
+                _zero_usage,
+            )
     
     def translate(self, audio_filepath: str, target_language: str = "en") -> str:
         """

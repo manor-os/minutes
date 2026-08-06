@@ -20,7 +20,36 @@ MEETING_NOTE_TAKER_API_KEY=your-secure-api-key-here
 
 **Important**: Use a strong, randomly generated API key in production!
 
-### 2. Restart Services
+### 2. Scope the API Key to a Tenant
+
+The API key is a single shared secret, so by itself it identifies *a caller*,
+not *a tenant*. It must be told which entities it may act for — otherwise it
+authenticates successfully but cannot read any tenant's data.
+
+Pick one of:
+
+```env
+# (a) Bind the key to exactly one entity. Requests may only touch this entity,
+#     and an entity_id query parameter that disagrees is rejected with 403.
+MEETING_NOTE_TAKER_API_KEY_ENTITY_ID=12345
+```
+
+```env
+# (b) Mark the key as a trusted service-to-service credential (this is the
+#     Manor AI backend case). It may then name the entity it acts for via the
+#     entity_id query parameter.
+MEETING_NOTE_TAKER_API_KEY_TRUSTED=true
+```
+
+Use (b) only for a credential held by a service you control. Any client holding
+a trusted key can read every tenant's meetings — that is the whole point of the
+setting, and the reason it is not the default.
+
+Integration endpoints also accept a user JWT (`Authorization: Bearer <token>`).
+A JWT is always bound to its own entity, so no configuration is needed and any
+`entity_id` parameter that disagrees with the token is rejected.
+
+### 3. Restart Services
 
 After setting the API key, restart the backend service:
 

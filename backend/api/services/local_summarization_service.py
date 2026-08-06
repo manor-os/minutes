@@ -113,6 +113,24 @@ Now write a single cohesive summary combining all sections:"""
     return _ollama_generate(reduce_prompt, system=system, max_tokens=max_tokens)
 
 
+def _estimate_usage(prompt_text: str, completion_text: str) -> Dict[str, int]:
+    """Approximate token usage for a local Ollama call.
+
+    Ollama is not metered by the shared provider, so there is no authoritative
+    token count to read back. Word counts are a rough stand-in — the point is
+    that every local helper reports the same *shape* as the cloud path
+    (prompt/completion/total), so callers summing the split do not silently
+    read zeros for some helpers.
+    """
+    prompt_tokens = len((prompt_text or "").split())
+    completion_tokens = len((completion_text or "").split())
+    return {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": prompt_tokens + completion_tokens,
+    }
+
+
 def summarize_local(transcript: str, template_id: str = "general") -> Tuple[str, Dict[str, int]]:
     """Generate meeting summary using Map-Reduce pattern."""
     template = get_template(template_id)
@@ -125,9 +143,7 @@ def summarize_local(transcript: str, template_id: str = "general") -> Tuple[str,
         max_tokens=1024,
     )
 
-    usage = {"prompt_tokens": len(transcript.split()), "completion_tokens": len(result.split()), "total_tokens": 0}
-    usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
-    return result, usage
+    return result, _estimate_usage(transcript, result)
 
 
 def extract_key_points_local(transcript: str, template_id: str = "general") -> Tuple[List[str], Dict[str, int]]:
@@ -164,7 +180,8 @@ Return ONLY a JSON array like: ["point 1", "point 2"]"""
             if final_points:
                 all_points = final_points
 
-    return all_points[:10], {"total_tokens": len(transcript.split()) + sum(len(p.split()) for p in all_points)}
+    points = all_points[:10]
+    return points, _estimate_usage(transcript, " ".join(points))
 
 
 def extract_action_items_local(transcript: str, template_id: str = "general") -> Tuple[List[Dict], Dict[str, int]]:
@@ -192,7 +209,7 @@ Return ONLY a JSON array like: [{{"description": "...", "assignee": "...", "dead
             items = _parse_json_array(result, expect_objects=True)
             all_items.extend(items)
 
-    return all_items, {"total_tokens": len(transcript.split()) + len(str(all_items).split())}
+    return all_items, _estimate_usage(transcript, str(all_items))
 
 
 def _parse_json_array(text: str, expect_objects: bool = False) -> List:

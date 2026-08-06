@@ -14,9 +14,15 @@ from loguru import logger
 # Database URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/meeting_notes")
 
-# Default admin credentials for community edition (configurable via env vars)
+# Default admin account for community edition (configurable via env vars).
+# ADMIN_PASSWORD has no default on purpose: a well-known password shipped with
+# every deployment is a public credential. When it is unset a strong random
+# password is generated at first boot and printed once to the logs.
 DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@minutes.local")
-DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin")
+DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+SEED_DEFAULT_ADMIN = (os.getenv("SEED_DEFAULT_ADMIN", "true") or "").strip().lower() not in (
+    "0", "false", "no", "off",
+)
 
 JWT_SECRET = os.getenv("JWT_SECRET", "meeting-note-taker-secret-key-change-in-production")
 JWT_ALGORITHM = "HS256"
@@ -246,13 +252,35 @@ def seed_default_admin() -> bool:
     """Create the default admin account if it does not exist yet.
 
     Idempotent — safe to call on every startup.
-    Credentials are controlled by ADMIN_EMAIL / ADMIN_PASSWORD env vars.
+
+    Credentials come from ADMIN_EMAIL / ADMIN_PASSWORD. When ADMIN_PASSWORD is
+    unset a random one is generated and logged once, so a deployment never ends
+    up with a password that is guessable from the source tree. Set
+    SEED_DEFAULT_ADMIN=false to skip seeding entirely.
     """
+    if not SEED_DEFAULT_ADMIN:
+        return False
     if get_user_by_email(DEFAULT_ADMIN_EMAIL):
         return False  # already seeded
-    result = register_user(DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD, "Admin")
+
+    password = DEFAULT_ADMIN_PASSWORD
+    generated = not password
+    if generated:
+        import secrets
+        password = secrets.token_urlsafe(18)
+
+    result = register_user(DEFAULT_ADMIN_EMAIL, password, "Admin")
     if result:
-        logger.info(f"Default admin account created: {DEFAULT_ADMIN_EMAIL}")
+        if generated:
+            logger.warning(
+                "Default admin account created: {} — generated password: {}\n"
+                "This password is shown only once. Change it after signing in, "
+                "or set ADMIN_PASSWORD to manage it yourself.",
+                DEFAULT_ADMIN_EMAIL,
+                password,
+            )
+        else:
+            logger.info(f"Default admin account created: {DEFAULT_ADMIN_EMAIL}")
         return True
     logger.warning("Failed to create default admin account")
     return False

@@ -331,8 +331,8 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
                         "action_items": action_items,
                         "token_cost": {
                             "summary": {"tokens": summary_usage.get("total_tokens", 0), "cost": 0.0, "prompt_tokens": summary_usage.get("prompt_tokens", 0), "completion_tokens": summary_usage.get("completion_tokens", 0)},
-                            "key_points": {"tokens": kp_usage.get("total_tokens", 0), "cost": 0.0, "prompt_tokens": 0, "completion_tokens": 0},
-                            "action_items": {"tokens": ai_usage.get("total_tokens", 0), "cost": 0.0, "prompt_tokens": 0, "completion_tokens": 0},
+                            "key_points": {"tokens": kp_usage.get("total_tokens", 0), "cost": 0.0, "prompt_tokens": kp_usage.get("prompt_tokens", 0), "completion_tokens": kp_usage.get("completion_tokens", 0)},
+                            "action_items": {"tokens": ai_usage.get("total_tokens", 0), "cost": 0.0, "prompt_tokens": ai_usage.get("prompt_tokens", 0), "completion_tokens": ai_usage.get("completion_tokens", 0)},
                             "total_tokens": summary_usage.get("total_tokens", 0) + kp_usage.get("total_tokens", 0) + ai_usage.get("total_tokens", 0),
                             "total_cost": 0.0,
                             "currency": "USD",

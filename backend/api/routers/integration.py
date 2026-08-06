@@ -1,5 +1,11 @@
 """
-Integration endpoints for programmatic access via API key
+Integration endpoints for programmatic access via API key or JWT.
+
+Tenant isolation rule: the entity a request may touch is derived from the
+*credential*, never from a caller-supplied parameter. A JWT carries its own
+entity_id; an API key must be bound to one (MEETING_NOTE_TAKER_API_KEY_ENTITY_ID)
+or explicitly marked as a trusted service credential
+(MEETING_NOTE_TAKER_API_KEY_TRUSTED=true) before it may name an entity itself.
 """
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
@@ -7,10 +13,47 @@ from typing import Optional, List
 from loguru import logger
 
 from api.services.api_key_service import verify_api_key
+from api.middleware.auth_middleware import get_authenticated_user
 from api.routers.meetings import list_meetings, get_meeting
 from api.models.meeting import MeetingStatus
 
 router = APIRouter(prefix="/api/integration", tags=["integration"])
+
+
+def _resolve_entity_id(auth: dict, requested: Optional[str]) -> str:
+    """Return the entity this request is allowed to act on.
+
+    A bound credential (JWT, or an entity-scoped API key) always wins and may
+    not be overridden by the query string. Only a credential explicitly marked
+    as a trusted service may name the entity it acts for.
+    """
+    bound = (auth or {}).get("entity_id")
+    bound = str(bound).strip() if bound is not None and str(bound).strip() else None
+
+    if bound:
+        if requested and str(requested).strip() != bound:
+            raise HTTPException(
+                status_code=403,
+                detail="entity_id does not match the authenticated credential",
+            )
+        return bound
+
+    if (auth or {}).get("trusted_service"):
+        if not requested or not str(requested).strip():
+            raise HTTPException(
+                status_code=400,
+                detail="entity_id query parameter is required for trusted service credentials",
+            )
+        return str(requested).strip()
+
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            "This credential is not scoped to any entity. Set "
+            "MEETING_NOTE_TAKER_API_KEY_ENTITY_ID to bind the API key to one entity, "
+            "or MEETING_NOTE_TAKER_API_KEY_TRUSTED=true for service-to-service use."
+        ),
+    )
 
 
 @router.get("/health")
@@ -30,16 +73,12 @@ async def list_meetings_integration(
     offset: int = 0,
     status: Optional[str] = None,
     entity_id: Optional[str] = None,
-    api_key_info: dict = Depends(verify_api_key)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
-    List meetings. Requires API key authentication and entity_id for data isolation.
+    List meetings for the entity this credential is scoped to.
     """
-    if not entity_id:
-        raise HTTPException(
-            status_code=400,
-            detail="entity_id query parameter is required for data isolation"
-        )
+    entity_id = _resolve_entity_id(auth, entity_id)
 
     try:
         from database.models import MeetingModel, MeetingStatusEnum
@@ -87,15 +126,11 @@ async def list_meetings_integration(
 @router.get("/meetings/{meeting_id}")
 async def get_meeting_integration(
     meeting_id: str,
-    entity_id: str = None,
-    api_key_info: dict = Depends(verify_api_key)
+    entity_id: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
 ):
-    """Get a specific meeting. Requires API key authentication and entity_id for data isolation."""
-    if not entity_id:
-        raise HTTPException(
-            status_code=400,
-            detail="entity_id query parameter is required for data isolation"
-        )
+    """Get a specific meeting within the entity this credential is scoped to."""
+    entity_id = _resolve_entity_id(auth, entity_id)
 
     try:
         from database.models import MeetingModel
@@ -132,15 +167,11 @@ async def get_meeting_integration(
 
 @router.get("/stats")
 async def get_stats(
-    entity_id: str = None,
-    api_key_info: dict = Depends(verify_api_key)
+    entity_id: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
 ):
-    """Get meeting statistics. Requires API key authentication and entity_id for data isolation."""
-    if not entity_id:
-        raise HTTPException(
-            status_code=400,
-            detail="entity_id query parameter is required for data isolation"
-        )
+    """Get meeting statistics for the entity this credential is scoped to."""
+    entity_id = _resolve_entity_id(auth, entity_id)
 
     try:
         from database.models import MeetingModel, MeetingStatusEnum

@@ -112,8 +112,7 @@ Minutes
 ├── backend/
 │   ├── api/            FastAPI REST API
 │   ├── celery_tasks.py Async processing (transcribe → summarize → extract)
-│   ├── database/       PostgreSQL models & migrations
-│   └── mcp_server/     MCP integration (cloud edition)
+│   └── database/       PostgreSQL models & migrations
 ├── docker-compose.yml  Base stack (Postgres, Redis, MinIO, Backend, Frontend)
 ├── minutes             CLI management tool
 └── installer/          npx create-manor-minutes
