@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI-powered meeting recorder — transcribe, summarize, extract action items">
+  <meta name="theme-color" content="#0f766e">
+  <title>Minutes — AI Meeting Notes</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <script id="manor-callback-bootstrap">
+    (function () {
+      if (window.location.pathname !== "/auth/manor-callback") return;
+
+      window.__MANOR_CALLBACK_BOOTSTRAPPED__ = true;
+
+      var params = new URLSearchParams(window.location.search || "");
+      var code = params.get("code");
+      var state = params.get("state");
+      var errorParam = params.get("error");
+
+      function consumeExpectedState() {
+        try {
+          var savedState = sessionStorage.getItem("manor_oauth_state");
+          sessionStorage.removeItem("manor_oauth_state");
+          return savedState;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function rememberError(message) {
+        try {
+          localStorage.setItem(
+            "manor_login_error",
+            message || "Manor sign-in failed. Please try again."
+          );
+        } catch (_) {}
+      }
+
+      function redirectHome(delay) {
+        window.setTimeout(function () {
+          window.location.replace("/");
+        }, delay || 0);
+      }
+
+      function fail(message) {
+        rememberError(message);
+        redirectHome(1000);
+      }
+
+      if (errorParam) {
+        fail("Manor sign-in cancelled: " + errorParam);
+        return;
+      }
+      if (!code || !state) {
+        fail("Manor sign-in returned no authorization code.");
+        return;
+      }
+
+      var savedState = consumeExpectedState();
+      if (savedState && savedState !== state) {
+        fail("Sign-in state mismatch. Please try again.");
+        return;
+      }
+
+      var apiBase =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+          ? "http://localhost:8002"
+          : window.location.origin;
+
+      var controller = window.AbortController ? new AbortController() : null;
+      var timeoutId = controller
+        ? window.setTimeout(function () {
+            controller.abort();
+          }, 35000)
+        : null;
+      var request = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code, state: state }),
+      };
+      if (controller) request.signal = controller.signal;
+
+      fetch(apiBase + "/api/auth/oauth/manor/callback", request)
+        .then(function (response) {
+          return response.json().catch(function () {
+            return {};
+          }).then(function (result) {
+            if (!response.ok || !result.success || !result.token) {
+              throw new Error(
+                result.detail || result.message || "Manor sign-in failed."
+              );
+            }
+            localStorage.setItem("auth_token", result.token);
+            localStorage.setItem("entity_id", result.entity_id || "");
+            localStorage.setItem("user_email", result.email || "");
+            localStorage.setItem("user_name", result.name || "");
+            localStorage.removeItem("manor_login_error");
+            window.location.replace("/");
+          });
+        })
+        .catch(function (error) {
+          fail(
+            error.name === "AbortError"
+              ? "Manor sign-in timed out. Please try again."
+              : error.message || String(error)
+          );
+        })
+        .finally(function () {
+          if (timeoutId) window.clearTimeout(timeoutId);
+        });
+    })();
+  </script>
+  <script id="google-callback-bootstrap">
+    (function () {
+      if (window.location.pathname !== "/googleCallback") return;
+
+      window.__GOOGLE_CALLBACK_BOOTSTRAPPED__ = true;
+
+      var params = new URLSearchParams(window.location.search || "");
+      var code = params.get("code");
+      var errorParam = params.get("error");
+
+      function rememberError(message) {
+        try {
+          localStorage.setItem(
+            "google_login_error",
+            message || "Google sign-in failed. Please try again."
+          );
+        } catch (_) {}
+      }
+
+      function redirectHome(delay) {
+        window.setTimeout(function () {
+          window.location.replace("/");
+        }, delay || 0);
+      }
+
+      function fail(message) {
+        rememberError(message);
+        redirectHome(1000);
+      }
+
+      if (errorParam) {
+        fail("Google sign-in cancelled: " + errorParam);
+        return;
+      }
+      if (!code) {
+        fail("Google sign-in returned no authorization code.");
+        return;
+      }
+
+      var apiBase =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+          ? "http://localhost:8002"
+          : window.location.origin;
+      var redirectUri = window.location.origin + "/googleCallback";
+      var controller = window.AbortController ? new AbortController() : null;
+      var timeoutId = controller
+        ? window.setTimeout(function () {
+            controller.abort();
+          }, 35000)
+        : null;
+      var request = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: code,
+          redirect_uri: redirectUri,
+          state: params.get("state") || "",
+        }),
+      };
+      if (controller) request.signal = controller.signal;
+
+      fetch(apiBase + "/api/auth/google-login", request)
+        .then(function (response) {
+          return response.json().catch(function () {
+            return {};
+          }).then(function (result) {
+            if (!response.ok || !result.success || !result.token) {
+              throw new Error(
+                result.detail || result.message || "Google sign-in failed."
+              );
+            }
+            localStorage.setItem("auth_token", result.token);
+            localStorage.setItem("entity_id", result.entity_id || "");
+            localStorage.setItem("user_email", result.email || "");
+            localStorage.setItem("user_name", result.name || "");
+            localStorage.removeItem("google_login_error");
+            window.location.replace("/");
+          });
+        })
+        .catch(function (error) {
+          fail(
+            error.name === "AbortError"
+              ? "Google sign-in timed out. Please try again."
+              : error.message || String(error)
+          );
+        })
+        .finally(function () {
+          if (timeoutId) window.clearTimeout(timeoutId);
+        });
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
