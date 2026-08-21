@@ -1,3 +1,7 @@
+/* Typography aligned with Manor AI: Inter for UI, JetBrains Mono for
+ * numerals, IDs and code-ish metadata. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
 * {
   margin: 0;
   padding: 0;
@@ -6,15 +10,18 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  letter-spacing: 0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+h1, h2, h3, h4 {
+  letter-spacing: -0.014em;
 }
 
+code {
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular,
+    Menlo, Consolas, monospace;
+}
