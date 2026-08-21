@@ -57,3 +57,28 @@ def test_objects_mode_does_not_salvage_strings():
 def test_empty_and_scaffolding_only():
     assert parse_json_array('') == []
     assert parse_json_array('```json\n[\n```') == []
+
+
+def test_prose_with_brackets_and_quotes_is_not_hijacked():
+    # Salvage must not fire on prose that merely contains '[' and quotes
+    text = ('Key points [3 total]:\n'
+            '- The client said "next week" for delivery\n'
+            '- Budget approved for Q3\n'
+            '- Timeline moved to May')
+    assert parse_json_array(text) == [
+        'The client said "next week" for delivery',
+        'Budget approved for Q3',
+        'Timeline moved to May',
+    ]
+
+
+def test_truncated_object_array_does_not_leak_keys():
+    result = parse_json_array('[{"text": "Budget approved for Q3"}, {"text": "Timeline moved')
+    assert 'text' not in result
+    assert result == []
+
+
+def test_preamble_excluded_when_bullets_present():
+    assert parse_json_array('Here are the key points:\n- Budget approved for Q3\n- Timeline moved to May') == [
+        'Budget approved for Q3', 'Timeline moved to May',
+    ]

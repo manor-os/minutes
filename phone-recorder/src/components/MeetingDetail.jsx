@@ -4,22 +4,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CalendarIcon, ClockIcon, MonitorIcon, DollarIcon, CheckCircleIcon, UserIcon, FileTextIcon, DownloadIcon, AlertCircleIcon, RefreshIcon, EditIcon, TrashIcon, CloseIcon, StarIcon, LoaderIcon, ExternalLinkIcon, ShareIcon, LinkIcon, MicIcon, MessageIcon } from './Icons';
 import { IS_CLOUD } from '../config/edition';
+import { cleanKeyPoints } from '../utils/keyPoints';
 import './MeetingDetail.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8002';
-
-// Clean key points for display: older meetings may have raw LLM output stored
-// (```json fences, brackets, quoted strings with trailing commas)
-const cleanKeyPoints = (points) => {
-  if (!Array.isArray(points)) return [];
-  return points
-    .map(p => typeof p === 'string' ? p : (p?.text || p?.description || p?.point || JSON.stringify(p)))
-    .map(s => String(s).trim())
-    .filter(s => s && !/^(```\w*|```|\[|\]|\{|\})\s*,?\s*$/.test(s))
-    .map(s => s.replace(/,\s*$/, '').trim())
-    .map(s => (s.startsWith('"') && s.endsWith('"') && s.length > 1) ? s.slice(1, -1) : s)
-    .filter(Boolean);
-};
 
 function MeetingDetail({ meeting, onClose, onUpdate, onDelete, onNotification }) {
   const keyPoints = cleanKeyPoints(meeting.key_points);

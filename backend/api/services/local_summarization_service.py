@@ -8,13 +8,12 @@ Uses Map-Reduce pattern for long transcripts:
 This keeps memory usage constant regardless of transcript length.
 """
 import os
-import json
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 
 import httpx
 
-from .llm_parsing import parse_json_array
+from .llm_parsing import parse_json_array as _parse_json_array
 from .meeting_templates import get_template
 
 logger = logging.getLogger(__name__)
@@ -194,11 +193,6 @@ Return ONLY a JSON array like: [{{"description": "...", "assignee": "...", "dead
             all_items.extend(items)
 
     return all_items, {"total_tokens": len(transcript.split()) + len(str(all_items).split())}
-
-
-def _parse_json_array(text: str, expect_objects: bool = False) -> List:
-    """Parse JSON array from LLM output, handling common formatting issues."""
-    return parse_json_array(text, expect_objects=expect_objects)
 
 
 def is_ollama_available() -> bool:

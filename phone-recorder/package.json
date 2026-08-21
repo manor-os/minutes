@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "setup": "npm install",
-    "test:e2e": "node e2e/test-recording.mjs"
+    "test:e2e": "node e2e/test-recording.mjs && node e2e/test-meeting-detail.mjs"
   },
   "dependencies": {
     "date-fns": "^2.30.0",

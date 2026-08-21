@@ -74,14 +74,7 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         try { mediaRecorderRef.current.stop(); } catch (_) {}
       }
-      [streamRef, micStreamRef, displayStreamRef].forEach(ref => {
-        if (ref.current) {
-          ref.current.getTracks().forEach(t => { try { t.stop(); } catch (_) {} });
-        }
-      });
-      if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch (_) {}
-      }
+      stopAllMedia();
     };
   }, []);
 
@@ -207,6 +200,11 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
     } catch (error) {
       console.error('Error starting recording:', error);
       stopAllMedia();
+      // The refs may not be assigned yet if the mixing setup threw — stop the
+      // local streams too so the mic doesn't stay hot
+      [micStream, displayStream].forEach(s => {
+        if (s) s.getTracks().forEach(t => { try { t.stop(); } catch (_) {} });
+      });
       setAudioSources(null);
       if (onNotification) onNotification({ message: `Could not start recording: ${error.message}`, type: 'error' });
     }

@@ -151,12 +151,14 @@ Key Points:"""
             token_info = self._extract_usage(response)
 
             # The template prompts ask for a JSON array of strings, but models
-            # sometimes answer with fenced JSON, truncated JSON, or a plain
-            # bullet list — parse_json_array handles all of these.
-            key_points = [
-                p.strip() for p in parse_json_array(content)
-                if isinstance(p, str) and p.strip()
-            ]
+            # sometimes answer with fenced JSON, truncated JSON, a plain
+            # bullet list, or an array of objects — handle all of these.
+            key_points = []
+            for p in parse_json_array(content):
+                if isinstance(p, dict):
+                    p = p.get("text") or p.get("description") or p.get("point") or ""
+                if isinstance(p, str) and p.strip():
+                    key_points.append(p.strip())
 
             logger.info(f"Extracted {len(key_points)} key points. Tokens: {token_info['total_tokens']}")
             return key_points[:num_points], token_info

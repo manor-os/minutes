@@ -9,7 +9,9 @@
 // audio both end up in the recording.
 //
 // Usage:  npm run build && node e2e/test-recording.mjs
-// Env:    CHROMIUM_PATH  optional path to a Chromium binary
+// Env:    CHROMIUM_PATH  path to a Chromium/Chrome binary — required unless a
+//                        playwright-managed browser is already installed
+//                        (playwright-core does not download one)
 //         E2E_PORT       port for the static server (default 9002)
 import { chromium } from 'playwright-core';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
@@ -42,11 +44,20 @@ const server = createServer((req, res) => {
 await new Promise(r => server.listen(PORT, r));
 step(`static server on :${PORT}`);
 
-const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH || undefined,
-  headless: true,
-  args: ['--autoplay-policy=no-user-gesture-required', '--no-sandbox'],
-});
+let browser;
+try {
+  browser = await chromium.launch({
+    executablePath: process.env.CHROMIUM_PATH || undefined,
+    headless: true,
+    args: ['--autoplay-policy=no-user-gesture-required', '--no-sandbox'],
+  });
+} catch (err) {
+  server.close();
+  console.error('Could not launch a browser:', err.message.split('\n')[0]);
+  console.error('Set CHROMIUM_PATH to a Chromium/Chrome binary, e.g.:');
+  console.error('  CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e');
+  process.exit(1);
+}
 const page = await (await browser.newContext()).newPage();
 page.on('pageerror', e => console.log('PAGE EXCEPTION:', String(e).slice(0, 200)));
 
