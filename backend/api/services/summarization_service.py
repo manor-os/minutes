@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 
 from .llm_config import get_openrouter_client, get_llm_model
+from .llm_parsing import parse_json_array
 from .meeting_templates import get_template
 
 
@@ -149,17 +150,16 @@ Key Points:"""
             content = response.choices[0].message.content.strip()
             token_info = self._extract_usage(response)
 
-            # Parse bullet points
-            key_points = [
-                point.strip().lstrip('-•* ')
-                for point in content.split('\n')
-                if point.strip() and (point.strip().startswith('-') or point.strip().startswith('•') or point.strip().startswith('*'))
-            ]
-            
-            # If no bullet points found, split by lines
-            if not key_points:
-                key_points = [line.strip() for line in content.split('\n') if line.strip()][:num_points]
-            
+            # The template prompts ask for a JSON array of strings, but models
+            # sometimes answer with fenced JSON, truncated JSON, a plain
+            # bullet list, or an array of objects — handle all of these.
+            key_points = []
+            for p in parse_json_array(content):
+                if isinstance(p, dict):
+                    p = p.get("text") or p.get("description") or p.get("point") or ""
+                if isinstance(p, str) and p.strip():
+                    key_points.append(p.strip())
+
             logger.info(f"Extracted {len(key_points)} key points. Tokens: {token_info['total_tokens']}")
             return key_points[:num_points], token_info
             

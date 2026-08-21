@@ -8,12 +8,12 @@ Uses Map-Reduce pattern for long transcripts:
 This keeps memory usage constant regardless of transcript length.
 """
 import os
-import json
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 
 import httpx
 
+from .llm_parsing import parse_json_array as _parse_json_array
 from .meeting_templates import get_template
 
 logger = logging.getLogger(__name__)
@@ -193,48 +193,6 @@ Return ONLY a JSON array like: [{{"description": "...", "assignee": "...", "dead
             all_items.extend(items)
 
     return all_items, {"total_tokens": len(transcript.split()) + len(str(all_items).split())}
-
-
-def _parse_json_array(text: str, expect_objects: bool = False) -> List:
-    """Parse JSON array from LLM output, handling common formatting issues."""
-    text = text.strip()
-
-    # Handle markdown code blocks
-    if "```" in text:
-        parts = text.split("```")
-        for part in parts[1:]:
-            if part.startswith("json"):
-                part = part[4:]
-            part = part.strip()
-            if part.startswith("["):
-                text = part
-                break
-
-    # Try direct parse
-    try:
-        result = json.loads(text)
-        if isinstance(result, list):
-            return result
-    except json.JSONDecodeError:
-        pass
-
-    # Find JSON array in text
-    start = text.find("[")
-    end = text.rfind("]")
-    if start != -1 and end != -1 and end > start:
-        try:
-            result = json.loads(text[start:end + 1])
-            if isinstance(result, list):
-                return result
-        except json.JSONDecodeError:
-            pass
-
-    # Fallback: parse lines as strings
-    if not expect_objects:
-        points = [line.strip().lstrip("- *0123456789.)\u2022").strip() for line in text.split("\n") if line.strip() and len(line.strip()) > 5]
-        return [p for p in points if p]
-
-    return []
 
 
 def is_ollama_available() -> bool:

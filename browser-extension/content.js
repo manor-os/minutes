@@ -7,8 +7,23 @@ const FRONTEND_URL = 'http://localhost:9002';
 
 let mediaRecorder = null;
 let audioChunks = [];
-let stream = null;
+let stream = null;        // tab (meeting) audio
+let micStream = null;     // local microphone
+let audioContext = null;  // mixing graph
 let isRecording = false;
+
+// Stop all capture streams and close the mixing context
+function cleanupMedia() {
+  [stream, micStream].forEach(s => {
+    if (s) s.getTracks().forEach(t => { try { t.stop(); } catch (_) {} });
+  });
+  stream = null;
+  micStream = null;
+  if (audioContext) {
+    try { audioContext.close(); } catch (_) {}
+    audioContext = null;
+  }
+}
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -128,8 +143,34 @@ async function startRecording(streamId, sendResponse) {
       throw new Error(errorMessage);
     }
 
-    // Create MediaRecorder
-    mediaRecorder = new MediaRecorder(stream, {
+    // Also capture the local microphone so the user's own voice is recorded
+    // alongside the meeting (tab) audio
+    micStream = null;
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
+      console.log('✅ Microphone stream acquired for mixing');
+    } catch (micError) {
+      console.warn('⚠️ Microphone unavailable, recording tab audio only:', micError.message);
+    }
+
+    // Mix tab + mic into one stream. Tab capture mutes the tab's own playback,
+    // so route the tab audio back to the speakers to keep the meeting audible.
+    audioContext = new AudioContext();
+    if (audioContext.state === 'suspended') {
+      try { await audioContext.resume(); } catch (_) {}
+    }
+    const destination = audioContext.createMediaStreamDestination();
+    const tabSource = audioContext.createMediaStreamSource(stream);
+    tabSource.connect(destination);
+    tabSource.connect(audioContext.destination);
+    if (micStream) {
+      audioContext.createMediaStreamSource(micStream).connect(destination);
+    }
+
+    // Create MediaRecorder on the mixed stream
+    mediaRecorder = new MediaRecorder(destination.stream, {
       mimeType: 'audio/webm;codecs=opus'
     });
 
@@ -205,11 +246,9 @@ async function startRecording(streamId, sendResponse) {
       console.log('📤 [CONTENT SCRIPT] Audio chunks collected:', audioChunks.length, 'chunks');
       console.log('📤 [CONTENT SCRIPT] Upload will be handled by stopRecording function');
       
-      // Clean up stream
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        console.log('✅ [CONTENT SCRIPT] Stream tracks stopped in onstop handler');
-      }
+      // Clean up streams and mixing context
+      cleanupMedia();
+      console.log('✅ [CONTENT SCRIPT] Media cleaned up in onstop handler');
     };
 
     // Verify onstop handler is set
@@ -308,9 +347,8 @@ function stopRecording(sendResponse) {
         mediaRecorderState: mediaRecorder.state
       });
       
-      // Store reference to audio chunks and stream before stopping
+      // Store reference to audio chunks before stopping
       const chunksToUpload = [...audioChunks];
-      const streamToCleanup = stream;
       const startTime = mediaRecorder.startTime || Date.now();
       
       // Stop the MediaRecorder
@@ -509,13 +547,8 @@ function stopRecording(sendResponse) {
             showNotification(`❌ Upload error: ${error.message}`);
           }
           
-          // Clean up stream
-          if (streamToCleanup) {
-            streamToCleanup.getTracks().forEach(track => {
-              track.stop();
-              console.log('Stopped stream track');
-            });
-          }
+          // Clean up streams and mixing context
+          cleanupMedia();
         } else {
           console.error('❌ [CONTENT SCRIPT] No audio chunks to upload!', {
             chunksToUploadLength: chunksToUpload.length,
@@ -682,9 +715,7 @@ async function triggerUpload() {
   }
   
   // Clean up
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
+  cleanupMedia();
 }
 
 // Detect meeting platform

@@ -62,6 +62,7 @@ Open **http://localhost:9002** → Register → Start recording.
 
 ### Recording & Transcription
 - **Live recording** with real-time transcript (word-by-word streaming)
+- **Meeting audio capture** — records your mic *and* other participants by mixing in tab/system audio (share the meeting tab with "Share audio" enabled)
 - **Upload audio** — drag-and-drop MP3, WAV, M4A, WebM, OGG, FLAC, MP4
 - **Speaker diarization** — identifies who said what
 - **20+ languages** supported for transcription

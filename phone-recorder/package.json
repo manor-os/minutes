@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "setup": "npm install"
+    "setup": "npm install",
+    "test:e2e": "node e2e/test-recording.mjs && node e2e/test-meeting-detail.mjs"
   },
   "dependencies": {
     "date-fns": "^2.30.0",
@@ -17,6 +18,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "playwright-core": "^1.49.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",

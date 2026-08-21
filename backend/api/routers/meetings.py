@@ -307,11 +307,40 @@ async def get_usage_stats_redirect(user: dict = Depends(get_authenticated_user))
 async def serve_audio(filename: str, user: dict = Depends(get_authenticated_user)):
     """Serve audio file from storage."""
     from fastapi.responses import StreamingResponse
-    store = storage()
-    if not store.exists(filename):
+
+    # Reject path traversal — stored keys are bare filenames (legacy rows may
+    # carry a relative directory prefix, which is still safe after this check)
+    if not filename or Path(filename).is_absolute() or ".." in Path(filename).parts:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    # Only the meeting's owner may fetch its audio
+    entity_id = user.get('entity_id')
+    db = get_db_session()
+    try:
+        owned = db.query(MeetingModel).filter(
+            MeetingModel.audio_file == filename,
+            MeetingModel.entity_id == str(entity_id)
+        ).first()
+    finally:
+        db.close()
+    if not owned:
         raise HTTPException(status_code=404, detail="Audio file not found")
 
-    data = store.load(filename)
+    store = storage()
+    data = None
+    if store.exists(filename):
+        data = store.load(filename)
+    else:
+        # Fallback: the local copy written at upload time, or files uploaded
+        # before the storage backend (e.g. MinIO) was introduced
+        for candidate in (STORAGE_DIR / Path(filename).name, Path(filename)):
+            if candidate.is_file():
+                data = candidate.read_bytes()
+                break
+    if data is None:
+        raise HTTPException(status_code=404, detail="Audio file not found")
+
+    safe_name = Path(filename).name.replace('"', '')
     ext = Path(filename).suffix.lower()
     content_type = {
         ".webm": "audio/webm", ".mp3": "audio/mpeg", ".wav": "audio/wav",
@@ -320,7 +349,7 @@ async def serve_audio(filename: str, user: dict = Depends(get_authenticated_user
 
     from io import BytesIO
     return StreamingResponse(BytesIO(data), media_type=content_type, headers={
-        "Content-Disposition": f'inline; filename="{filename}"'
+        "Content-Disposition": f'inline; filename="{safe_name}"'
     })
 
 

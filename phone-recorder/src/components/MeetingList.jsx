@@ -655,13 +655,17 @@ function MeetingList({ recordings, onRefresh, onNotification, currentUser, searc
                     e.stopPropagation();
                     const token = localStorage.getItem('auth_token');
                     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8002';
+                    const audioExt = (recording.audio_file.match(/\.[a-z0-9]+$/i) || ['.webm'])[0];
                     fetch(`${API_BASE_URL}/api/meetings/audio/${recording.audio_file}`, {
                       headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-                    }).then(r => r.blob()).then(blob => {
+                    }).then(r => {
+                      if (!r.ok) throw new Error('Download failed');
+                      return r.blob();
+                    }).then(blob => {
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = `${recording.title || 'recording'}.webm`;
+                      a.download = `${recording.title || 'recording'}${audioExt}`;
                       a.click();
                       URL.revokeObjectURL(url);
                     }).catch(() => {

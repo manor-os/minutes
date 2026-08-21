@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CalendarIcon, ClockIcon, CheckCircleIcon, StarIcon } from './Icons';
+import { cleanKeyPoints } from '../utils/keyPoints';
 import './SharedMeeting.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8002';
@@ -119,14 +120,12 @@ function SharedMeeting({ shareToken }) {
           </section>
         )}
 
-        {meeting.key_points && meeting.key_points.length > 0 && (
+        {cleanKeyPoints(meeting.key_points).length > 0 && (
           <section className="shared-section">
             <h2><StarIcon size={16} /> Key Points</h2>
             <ul className="shared-key-points">
-              {meeting.key_points.map((point, index) => (
-                <li key={index}>
-                  {typeof point === 'string' ? point : (point.text || point.description || JSON.stringify(point))}
-                </li>
+              {cleanKeyPoints(meeting.key_points).map((point, index) => (
+                <li key={index}>{point}</li>
               ))}
             </ul>
           </section>
