@@ -34,14 +34,19 @@ jobs:
             HOST="${{ secrets.PROD_EC2_HOST }}"
           fi
           if [ -z "$HOST" ]; then
-            echo "::error::No deploy host configured. Add the MINUTES_SSH_HOST secret (and SSH_PRIVATE_KEY) in the repository or organization settings."
-            exit 1
+            # No secrets configured — deployment is manual for this repo.
+            # Skip quietly instead of failing every push to main.
+            echo "::notice::Auto-deploy skipped: no MINUTES_SSH_HOST/SSH_PRIVATE_KEY secrets configured. Deploy manually or add the secrets to enable."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "host=$HOST" >> "$GITHUB_OUTPUT"
           USER="${{ vars.MINUTES_SSH_USER }}"
           echo "user=${USER:-ec2-user}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy over SSH
+        if: steps.target.outputs.skip != 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ steps.target.outputs.host }}
