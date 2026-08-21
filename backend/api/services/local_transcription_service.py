@@ -126,7 +126,15 @@ def transcribe_local(audio_filepath: str, language: Optional[str] = None) -> Dic
     wav_size = os.path.getsize(wav_path) if os.path.exists(wav_path) else 0
     logger.info(f"Transcribing: original={audio_filepath} ({orig_size}B), converted={wav_path} ({wav_size}B)")
 
-    kwargs = {"beam_size": 5, "word_timestamps": True}
+    # vad_filter skips non-speech; condition_on_previous_text=False prevents the
+    # decoder feeding hallucinated text back into itself, which is what produces
+    # the classic "Dr. Dr. Dr. ..." repetition loops on silence/noise.
+    kwargs = {
+        "beam_size": 5,
+        "word_timestamps": True,
+        "vad_filter": True,
+        "condition_on_previous_text": False,
+    }
     if language:
         kwargs["language"] = language
 

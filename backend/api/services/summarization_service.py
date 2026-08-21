@@ -8,6 +8,11 @@ from .llm_config import get_openrouter_client, get_llm_model
 from .llm_parsing import parse_json_array
 from .meeting_templates import get_template
 
+# Transcripts longer than this are summarized with map-reduce (per-chunk notes,
+# then one combining call) instead of a single full-transcript call.
+# ~60k chars ≈ 15k tokens, safely inside common model context windows.
+CHUNK_CHAR_LIMIT = 60000
+
 
 class SummarizationService:
     """Service for generating meeting summaries and extracting key points"""
@@ -247,6 +252,155 @@ Action Items (JSON format):"""
             logger.error(f"Action items extraction failed: {str(e)}")
             return [], {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     
+    def _notes_call(self, content: str, template_id: str, mode: str = "full", part: tuple = None) -> tuple:
+        """One LLM call producing {summary, key_points, action_items} as JSON.
+
+        mode: "full" (whole transcript), "part" (one chunk of a long meeting),
+        or "reduce" (combine per-part notes into final notes).
+        Returns (parsed dict or None, token_info).
+        """
+        template = get_template(template_id)
+
+        if mode == "reduce":
+            body = f"""Below are meeting notes generated from consecutive parts of one long meeting.
+Combine them into final notes for the whole meeting. Merge overlapping points; keep the
+summary coherent as a single narrative. You may leave "action_items" empty — they are
+merged separately.
+
+Per-part notes:
+{content}"""
+        else:
+            part_note = f"\nThis is part {part[0]} of {part[1]} of a longer meeting — cover just this part.\n" if part else ""
+            body = f"""{part_note}
+Meeting Transcript:
+{content}"""
+
+        prompt = f"""Produce meeting notes for the material below as a single JSON object with exactly these keys:
+- "summary": {template['summary_prompt']} Use markdown formatting (headers, bullet points, bold). When mentioning what was said, attribute it to the speaker (e.g., "Speaker 1 mentioned..."). Always produce a best-effort summary; note uncertainty explicitly instead of refusing.
+- "key_points": {template['key_points_prompt']} Up to 7 clear, concise strings.
+- "action_items": {template['action_items_prompt']} Use object keys: task, assignee, due_date (use "TBD" when not mentioned). Empty array if none.
+{body}
+
+JSON:"""
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": "You are a professional meeting note taker. Respond with a single valid JSON object and nothing else. Always summarize the supplied content as best you can; identify uncertainty instead of refusing to summarize."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+            max_tokens=3000,
+        )
+        token_info = self._extract_usage(response)
+        data = self._parse_notes_payload(response.choices[0].message.content)
+        return data, token_info
+
+    @staticmethod
+    def _parse_notes_payload(content: str) -> Optional[dict]:
+        """Parse and normalize the merged notes JSON. Returns None when unusable."""
+        import json
+        text = (content or "").strip()
+        if "```" in text:
+            for piece in text.split("```"):
+                piece = piece[4:] if piece.startswith("json") else piece
+                piece = piece.strip()
+                if piece.startswith("{"):
+                    text = piece
+                    break
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict):
+            return None
+
+        summary = str(data.get("summary") or "").strip()
+        if not summary:
+            return None
+
+        key_points = []
+        for p in data.get("key_points") or []:
+            if isinstance(p, dict):
+                p = p.get("text") or p.get("description") or p.get("point") or ""
+            if isinstance(p, str) and p.strip():
+                key_points.append(p.strip())
+
+        action_items = []
+        for item in data.get("action_items") or []:
+            if not isinstance(item, dict):
+                continue
+            task = str(item.get("task") or item.get("description") or "").strip()
+            if not task:
+                continue
+            action_items.append({
+                "task": task,
+                "assignee": str(item.get("assignee") or "TBD").strip() or "TBD",
+                "due_date": str(item.get("due_date") or item.get("deadline") or "TBD").strip() or "TBD",
+            })
+
+        return {"summary": summary, "key_points": key_points, "action_items": action_items}
+
+    @staticmethod
+    def _split_transcript(transcript: str, limit: int = None) -> List[str]:
+        """Split a long transcript into chunks near the limit, on line/word boundaries."""
+        limit = limit or CHUNK_CHAR_LIMIT
+        chunks = []
+        rest = transcript
+        while len(rest) > limit:
+            cut = rest.rfind("\n", max(0, limit - 5000), limit)
+            if cut <= 0:
+                cut = rest.rfind(" ", max(0, limit - 5000), limit)
+            if cut <= 0:
+                cut = limit
+            chunks.append(rest[:cut])
+            rest = rest[cut:]
+        if rest.strip():
+            chunks.append(rest)
+        return chunks
+
+    def _notes_map_reduce(self, transcript: str, template_id: str) -> tuple:
+        """Map-reduce notes for transcripts too long for a single call.
+        Returns (final dict or None, list of token_info)."""
+        chunks = self._split_transcript(transcript)
+        usages: List[Dict[str, int]] = []
+        parts: List[dict] = []
+        for i, chunk in enumerate(chunks, 1):
+            data, tokens = self._notes_call(chunk, template_id, mode="part", part=(i, len(chunks)))
+            usages.append(tokens)
+            if data:
+                parts.append(data)
+        if not parts:
+            return None, usages
+
+        # Action items are merged in code (dedup by task) rather than by the model
+        action_items, seen = [], set()
+        for part in parts:
+            for item in part["action_items"]:
+                key = item["task"].lower()
+                if key not in seen:
+                    seen.add(key)
+                    action_items.append(item)
+
+        reduce_input = "\n\n".join(
+            f"Part {i} summary:\n{p['summary']}\n\nPart {i} key points:\n"
+            + "\n".join(f"- {k}" for k in p["key_points"])
+            for i, p in enumerate(parts, 1)
+        )
+        final, reduce_tokens = self._notes_call(reduce_input, template_id, mode="reduce")
+        usages.append(reduce_tokens)
+        if final is None:
+            # Degraded but usable: stitch the per-part notes together
+            final = {
+                "summary": "\n\n".join(p["summary"] for p in parts),
+                "key_points": [k for p in parts for k in p["key_points"]][:7],
+                "action_items": [],
+            }
+        final["action_items"] = action_items
+        logger.info(f"Map-reduce notes: {len(chunks)} chunks, {len(action_items)} merged action items")
+        return final, usages
+
     def generate_meeting_notes(self, transcript: str, template_id: str = "general") -> dict:
         """
         Generate comprehensive meeting notes including summary, key points, and action items
@@ -274,14 +428,48 @@ Action Items (JSON format):"""
                     "currency": "USD"
                 }
             }
-        
+
+        _ZERO_TOKENS: Dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+        def _cost_entry(tokens: Dict[str, int]) -> Dict[str, Any]:
+            cost = self._calculate_cost(self.model, tokens["prompt_tokens"], tokens["completion_tokens"])
+            return {**tokens, "tokens": tokens["total_tokens"], "cost": round(cost, 6)}
+
+        # Preferred path: one structured-output call (map-reduce for long meetings)
+        # instead of three separate full-transcript calls.
         try:
-            _ZERO_TOKENS: Dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+            if len(transcript) > CHUNK_CHAR_LIMIT:
+                data, usages = self._notes_map_reduce(transcript, template_id)
+            else:
+                data, tokens = self._notes_call(transcript, template_id)
+                usages = [tokens]
+            if data is not None:
+                combined = {
+                    "prompt_tokens": sum(u.get("prompt_tokens", 0) for u in usages),
+                    "completion_tokens": sum(u.get("completion_tokens", 0) for u in usages),
+                }
+                combined["total_tokens"] = combined["prompt_tokens"] + combined["completion_tokens"]
+                return {
+                    "summary": data["summary"],
+                    "key_points": data["key_points"],
+                    "action_items": data["action_items"],
+                    "token_cost": {
+                        # One merged call — the full usage is attributed to "summary"
+                        "summary": _cost_entry(combined),
+                        "key_points": _cost_entry(dict(_ZERO_TOKENS)),
+                        "action_items": _cost_entry(dict(_ZERO_TOKENS)),
+                        "total_tokens": combined["total_tokens"],
+                        "total_cost": _cost_entry(combined)["cost"],
+                        "currency": "USD",
+                        "model": self.model,
+                    },
+                }
+            logger.warning("Merged notes call returned unusable output, falling back to per-section calls")
+        except Exception as e:
+            logger.warning(f"Merged notes generation failed ({e}), falling back to per-section calls")
 
-            def _cost_entry(tokens: Dict[str, int]) -> Dict[str, Any]:
-                cost = self._calculate_cost(self.model, tokens["prompt_tokens"], tokens["completion_tokens"])
-                return {**tokens, "tokens": tokens["total_tokens"], "cost": round(cost, 6)}
-
+        # Legacy fallback: three separate calls (works with models lacking JSON mode)
+        try:
             summary, summary_tokens = self.summarize(transcript, template_id=template_id)
 
             key_points: List = []

@@ -317,6 +317,11 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
 
             logger.info(f"Transcription completed, length: {len(transcript_text)} characters")
 
+            # Collapse Whisper repetition-loop hallucinations ("Dr. Dr. Dr. ...")
+            # before diarization and summarization see the transcript
+            from api.services.transcript_cleaning import clean_transcription
+            transcript_text, segments = clean_transcription(transcript_text, segments)
+
             # Run speaker diarization on segments
             try:
                 from api.services.diarization_service import diarize_with_segments
