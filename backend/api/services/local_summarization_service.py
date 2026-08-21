@@ -14,6 +14,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 import httpx
 
+from .llm_parsing import parse_json_array
 from .meeting_templates import get_template
 
 logger = logging.getLogger(__name__)
@@ -197,44 +198,7 @@ Return ONLY a JSON array like: [{{"description": "...", "assignee": "...", "dead
 
 def _parse_json_array(text: str, expect_objects: bool = False) -> List:
     """Parse JSON array from LLM output, handling common formatting issues."""
-    text = text.strip()
-
-    # Handle markdown code blocks
-    if "```" in text:
-        parts = text.split("```")
-        for part in parts[1:]:
-            if part.startswith("json"):
-                part = part[4:]
-            part = part.strip()
-            if part.startswith("["):
-                text = part
-                break
-
-    # Try direct parse
-    try:
-        result = json.loads(text)
-        if isinstance(result, list):
-            return result
-    except json.JSONDecodeError:
-        pass
-
-    # Find JSON array in text
-    start = text.find("[")
-    end = text.rfind("]")
-    if start != -1 and end != -1 and end > start:
-        try:
-            result = json.loads(text[start:end + 1])
-            if isinstance(result, list):
-                return result
-        except json.JSONDecodeError:
-            pass
-
-    # Fallback: parse lines as strings
-    if not expect_objects:
-        points = [line.strip().lstrip("- *0123456789.)\u2022").strip() for line in text.split("\n") if line.strip() and len(line.strip()) > 5]
-        return [p for p in points if p]
-
-    return []
+    return parse_json_array(text, expect_objects=expect_objects)
 
 
 def is_ollama_available() -> bool:
