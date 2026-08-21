@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(20, 18, 16, 0.5);
+  background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
@@ -29,14 +29,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px;
-  border-bottom: 1px solid #f5f5f4;
+  border-bottom: 1px solid #f1f5f9;
   flex-shrink: 0;
 }
 
 .usage-header h2 {
   font-size: 16px;
   font-weight: 700;
-  color: #181716;
+  color: #1e293b;
   margin: 0;
 }
 
@@ -46,7 +46,7 @@
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #a6a099;
+  color: #94a3b8;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -55,8 +55,8 @@
 }
 
 .usage-close-btn:hover {
-  background: #f5f5f4;
-  color: #3f3b37;
+  background: #f1f5f9;
+  color: #334155;
 }
 
 .usage-body {
@@ -69,7 +69,7 @@
   width: 4px;
 }
 .usage-body::-webkit-scrollbar-thumb {
-  background: #e7e5e4;
+  background: #e2e8f0;
   border-radius: 2px;
 }
 
@@ -77,14 +77,14 @@
 .usage-loading {
   text-align: center;
   padding: 40px 0;
-  color: #79716b;
+  color: #64748b;
   font-size: 14px;
 }
 
 .usage-error {
   text-align: center;
   padding: 40px 0;
-  color: var(--color-danger);
+  color: #dc2626;
   font-size: 14px;
 }
 
@@ -97,8 +97,8 @@
 }
 
 .usage-card {
-  background: #fafaf9;
-  border: 1px solid #f5f5f4;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -115,20 +115,20 @@
 .usage-card-value {
   font-size: 22px;
   font-weight: 700;
-  color: var(--accent);
+  color: #0f766e;
   line-height: 1.2;
 }
 
 .usage-card-label {
   font-size: 12px;
   font-weight: 600;
-  color: #79716b;
+  color: #64748b;
   margin-top: 2px;
 }
 
 .usage-card-sub {
   font-size: 11px;
-  color: #a6a099;
+  color: #94a3b8;
 }
 
 /* Section */
@@ -139,7 +139,7 @@
 .usage-section-title {
   font-size: 13px;
   font-weight: 700;
-  color: #a6a099;
+  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin: 0 0 12px 0;
@@ -160,7 +160,7 @@
 
 .usage-day-label {
   font-size: 12px;
-  color: #79716b;
+  color: #64748b;
   width: 80px;
   flex-shrink: 0;
   text-align: right;
@@ -169,14 +169,14 @@
 .usage-bar-container {
   flex: 1;
   height: 20px;
-  background: #f5f5f4;
+  background: #f1f5f9;
   border-radius: 6px;
   overflow: hidden;
 }
 
 .usage-bar {
   height: 100%;
-  background: var(--accent);
+  background: #0f766e;
   border-radius: 6px;
   min-width: 2px;
   transition: width 0.3s ease;
@@ -185,7 +185,7 @@
 .usage-day-count {
   font-size: 12px;
   font-weight: 600;
-  color: #181716;
+  color: #1e293b;
   width: 24px;
   text-align: right;
 }
@@ -210,76 +210,76 @@
 
 /* ── Dark Mode ── */
 [data-theme="dark"] .usage-modal {
-  background: rgba(20, 18, 16, 0.7);
+  background: rgba(15, 23, 42, 0.7);
 }
 
 [data-theme="dark"] .usage-content {
-  background: #181716;
+  background: #1e293b;
   box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.5);
 }
 
 [data-theme="dark"] .usage-header {
-  border-bottom-color: #3f3b37;
+  border-bottom-color: #334155;
 }
 
 [data-theme="dark"] .usage-header h2 {
-  color: #f5f5f4;
+  color: #f1f5f9;
 }
 
 [data-theme="dark"] .usage-close-btn {
-  color: #a6a099;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .usage-close-btn:hover {
-  background: #3f3b37;
-  color: #f5f5f4;
+  background: #334155;
+  color: #f1f5f9;
 }
 
 [data-theme="dark"] .usage-body::-webkit-scrollbar-thumb {
-  background: #3f3b37;
+  background: #334155;
 }
 
 [data-theme="dark"] .usage-loading {
-  color: #a6a099;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .usage-error {
-  color: #e08e86;
+  color: #f87171;
 }
 
 [data-theme="dark"] .usage-card {
-  background: #0e0d0c;
-  border-color: #3f3b37;
+  background: #0f172a;
+  border-color: #334155;
 }
 
 [data-theme="dark"] .usage-card-value {
-  color: var(--accent);
+  color: #14b8a6;
 }
 
 [data-theme="dark"] .usage-card-label {
-  color: #a6a099;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .usage-card-sub {
-  color: #79716b;
+  color: #64748b;
 }
 
 [data-theme="dark"] .usage-section-title {
-  color: #79716b;
+  color: #64748b;
 }
 
 [data-theme="dark"] .usage-day-label {
-  color: #a6a099;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .usage-bar-container {
-  background: #3f3b37;
+  background: #334155;
 }
 
 [data-theme="dark"] .usage-bar {
-  background: var(--accent);
+  background: #14b8a6;
 }
 
 [data-theme="dark"] .usage-day-count {
-  color: #f5f5f4;
+  color: #f1f5f9;
 }

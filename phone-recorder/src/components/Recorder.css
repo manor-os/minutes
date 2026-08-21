@@ -139,7 +139,7 @@
 .recorder-input:focus {
   border-color: var(--color-primary);
   background: var(--bg-card);
-  box-shadow: 0 0 0 3px rgba(79, 125, 117, 0.08);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.08);
 }
 
 .recorder-select {
@@ -156,7 +156,7 @@
   outline: none;
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a948c' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   transition: border-color 0.15s;
@@ -164,7 +164,7 @@
 
 .recorder-select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(79, 125, 117, 0.08);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.08);
 }
 
 .recorder-textarea {
@@ -186,7 +186,7 @@
 .recorder-textarea:focus {
   border-color: var(--color-primary);
   background: var(--bg-card);
-  box-shadow: 0 0 0 3px rgba(79, 125, 117, 0.08);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.08);
 }
 
 .recorder-toggle {
@@ -248,12 +248,12 @@
 .btn-start {
   background: var(--color-primary);
   color: white;
-  box-shadow: 0 4px 14px rgba(79, 125, 117, 0.25);
+  box-shadow: 0 4px 14px rgba(15, 118, 110, 0.25);
 }
 
 .btn-start:hover:not(:disabled) {
   background: var(--color-primary-hover);
-  box-shadow: 0 6px 20px rgba(79, 125, 117, 0.35);
+  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.35);
   transform: translateY(-1px);
 }
 
@@ -266,12 +266,12 @@
 .btn-stop {
   background: var(--color-danger);
   color: white;
-  box-shadow: 0 4px 14px rgba(193, 74, 68, 0.25);
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);
 }
 
 .btn-stop:hover {
   background: var(--color-danger-hover);
-  box-shadow: 0 6px 20px rgba(193, 74, 68, 0.35);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.35);
   transform: translateY(-1px);
 }
 
@@ -354,7 +354,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(193, 74, 68, 0.35);
+  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.35);
   z-index: 1;
 }
 
@@ -618,104 +618,104 @@
 
 /* ===== Dark mode ===== */
 [data-theme="dark"] .recorder-card {
-  background: #181716;
-  border-color: #3f3b37;
+  background: #1e293b;
+  border-color: #334155;
 }
 
 [data-theme="dark"] .recorder-tabs {
-  border-bottom-color: #3f3b37;
+  border-bottom-color: #334155;
 }
 
 [data-theme="dark"] .recorder-tab {
-  color: #79716b;
+  color: #64748b;
 }
 
 [data-theme="dark"] .recorder-tab:hover {
-  color: #d6d3d0;
-  background: #0e0d0c;
+  color: #cbd5e1;
+  background: #0f172a;
 }
 
 [data-theme="dark"] .recorder-tab.active {
-  color: var(--accent);
+  color: #14b8a6;
 }
 
 [data-theme="dark"] .recorder-tab.active::after {
-  background: var(--accent);
+  background: #14b8a6;
 }
 
 [data-theme="dark"] .hero-icon {
-  background: rgba(139, 186, 176, 0.1);
-  color: var(--accent);
+  background: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
 }
 
 [data-theme="dark"] .hero-icon-upload {
-  background: rgba(102, 140, 165, 0.1);
-  color: #8fb0c6;
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
 }
 
 [data-theme="dark"] .recorder-input,
 [data-theme="dark"] .recorder-textarea {
-  background: #0e0d0c;
-  border-color: #3f3b37;
-  color: #f5f5f4;
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
 }
 
 [data-theme="dark"] .recorder-input:focus,
 [data-theme="dark"] .recorder-textarea:focus {
-  border-color: var(--accent);
-  background: #0e0d0c;
-  box-shadow: 0 0 0 3px rgba(139, 186, 176, 0.1);
+  border-color: #14b8a6;
+  background: #0f172a;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
 }
 
 [data-theme="dark"] .recorder-select {
-  background-color: #0e0d0c;
-  border-color: #3f3b37;
-  color: #f5f5f4;
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
 }
 
 [data-theme="dark"] .upload-dropzone {
-  border-color: #3f3b37;
-  background: #0e0d0c;
+  border-color: #334155;
+  background: #0f172a;
 }
 
 [data-theme="dark"] .upload-dropzone:hover,
 [data-theme="dark"] .upload-dropzone.drag-over {
-  border-color: var(--accent);
-  background: rgba(139, 186, 176, 0.05);
+  border-color: #14b8a6;
+  background: rgba(20, 184, 166, 0.05);
 }
 
 [data-theme="dark"] .upload-dropzone.has-file {
-  border-color: var(--accent);
-  background: rgba(139, 186, 176, 0.05);
+  border-color: #14b8a6;
+  background: rgba(20, 184, 166, 0.05);
 }
 
 [data-theme="dark"] .upload-icon-circle {
-  background: #181716;
-  border-color: #3f3b37;
+  background: #1e293b;
+  border-color: #334155;
 }
 
 [data-theme="dark"] .file-icon-box {
-  background: #0e0d0c;
-  border-color: rgba(139, 186, 176, 0.2);
+  background: #0f172a;
+  border-color: rgba(20, 184, 166, 0.2);
 }
 
 [data-theme="dark"] .live-panel {
-  background: #181716;
-  border-color: #3f3b37;
+  background: #1e293b;
+  border-color: #334155;
 }
 
 [data-theme="dark"] .live-panel-header {
-  border-bottom-color: #3f3b37;
+  border-bottom-color: #334155;
 }
 
 [data-theme="dark"] .live-panel-segment {
-  border-bottom-color: #0e0d0c;
+  border-bottom-color: #0f172a;
 }
 
 /* ===== API key warning ===== */
 .api-key-warning {
-  background: color-mix(in srgb, #c99043 12%, var(--bg-card));
-  border: 1px solid color-mix(in srgb, #c99043 40%, transparent);
+  background: color-mix(in srgb, #f59e0b 12%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -742,7 +742,7 @@
   padding: 8px 14px;
   border-radius: 8px;
   border: none;
-  background: #c99043;
+  background: #f59e0b;
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -750,7 +750,7 @@
   transition: background 0.15s;
 }
 .api-key-warning-btn-settings:hover {
-  background: var(--color-amber);
+  background: #d97706;
 }
 
 .api-key-warning-btn-dismiss {
