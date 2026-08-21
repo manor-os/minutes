@@ -9,7 +9,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   animation: slideIn 0.3s ease-out;
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font);
 }
 
 @keyframes slideIn {
@@ -39,13 +39,13 @@
   flex: 1;
   font-size: 14px;
   font-weight: 500;
-  color: #1e293b;
+  color: #181716;
   line-height: 1.5;
 }
 
 .notification-action {
   padding: 8px 16px;
-  background: #0f766e;
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: 8px;
@@ -53,21 +53,21 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font);
   white-space: nowrap;
 }
 
 .notification-action:hover {
-  background: #0d9488;
+  background: var(--accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.3);
+  box-shadow: 0 2px 8px rgba(79, 125, 117, 0.3);
 }
 
 .notification-close {
   background: none;
   border: none;
   font-size: 24px;
-  color: #94a3b8;
+  color: #a6a099;
   cursor: pointer;
   padding: 0;
   width: 24px;
@@ -81,15 +81,15 @@
 }
 
 .notification-close:hover {
-  color: #64748b;
+  color: #79716b;
 }
 
 .notification-success {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid #437f6b;
 }
 
 .notification-error {
-  border-left: 4px solid #ef4444;
+  border-left: 4px solid #cf5a52;
 }
 
 .notification-info {
@@ -121,38 +121,38 @@
 
 /* ── Dark Mode ── */
 [data-theme="dark"] .notification {
-  background: #1e293b;
+  background: #181716;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"] .notification-message {
-  color: #f1f5f9;
+  color: #f5f5f4;
 }
 
 [data-theme="dark"] .notification-action {
-  background: #14b8a6;
-  color: #0f172a;
+  background: var(--accent);
+  color: #0e0d0c;
 }
 
 [data-theme="dark"] .notification-action:hover {
-  background: #2dd4bf;
-  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+  background: #8bbab0;
+  box-shadow: 0 2px 8px rgba(139, 186, 176, 0.3);
 }
 
 [data-theme="dark"] .notification-close {
-  color: #64748b;
+  color: #79716b;
 }
 
 [data-theme="dark"] .notification-close:hover {
-  color: #cbd5e1;
+  color: #d6d3d0;
 }
 
 [data-theme="dark"] .notification-success {
-  border-left-color: #10b981;
+  border-left-color: #437f6b;
 }
 
 [data-theme="dark"] .notification-error {
-  border-left-color: #ef4444;
+  border-left-color: #cf5a52;
 }
 
 [data-theme="dark"] .notification-info {

@@ -1,8 +1,8 @@
 <svg width="160" height="36" viewBox="0 0 160 36" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f766e"/>
-      <stop offset="100%" stop-color="#14b8a6"/>
+      <stop offset="0%" stop-color="#436b65"/>
+      <stop offset="100%" stop-color="#82ada4"/>
     </linearGradient>
   </defs>
   <!-- Icon -->
@@ -12,5 +12,5 @@
   <line x1="18" y1="24" x2="18" y2="28" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
   <line x1="14.5" y1="28" x2="21.5" y2="28" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
   <!-- Text -->
-  <text x="42" y="24" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" fill="#1e293b" letter-spacing="-0.5">Minutes</text>
+  <text x="42" y="24" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" fill="#1c1917" letter-spacing="-0.5">Minutes</text>
 </svg>
