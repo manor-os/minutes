@@ -1,0 +1,75 @@
+name: Deploy
+
+# Deploys the current main to the server running minutes.manorai.xyz.
+# Mirrors manor-cloud's SSH deploy pattern.
+#
+# Required secrets (repo or org level):
+#   SSH_PRIVATE_KEY   — private key for the deploy user
+#   MINUTES_SSH_HOST  — server hostname/IP (falls back to PROD_EC2_HOST)
+# Optional repository variables:
+#   MINUTES_SSH_USER   — SSH username (default: ec2-user)
+#   MINUTES_DEPLOY_DIR — path of the minutes checkout on the server
+#                        (auto-discovered from the running frontend
+#                        container's compose labels when unset)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-minutes
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve deploy target
+        id: target
+        run: |
+          set -euo pipefail
+          HOST="${{ secrets.MINUTES_SSH_HOST }}"
+          if [ -z "$HOST" ]; then
+            HOST="${{ secrets.PROD_EC2_HOST }}"
+          fi
+          if [ -z "$HOST" ]; then
+            echo "::error::No deploy host configured. Add the MINUTES_SSH_HOST secret (and SSH_PRIVATE_KEY) in the repository or organization settings."
+            exit 1
+          fi
+          echo "host=$HOST" >> "$GITHUB_OUTPUT"
+          USER="${{ vars.MINUTES_SSH_USER }}"
+          echo "user=${USER:-ec2-user}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ steps.target.outputs.host }}
+          username: ${{ steps.target.outputs.user }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+
+            DIR="${{ vars.MINUTES_DEPLOY_DIR }}"
+            if [ -z "$DIR" ]; then
+              # Self-discover the checkout: the frontend container carries the
+              # compose project working_dir in its labels
+              DIR=$(docker inspect meeting-note-frontend \
+                --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>/dev/null || true)
+            fi
+            if [ -z "$DIR" ] || [ ! -d "$DIR" ]; then
+              echo "::error::Could not locate the minutes checkout on the server. Set the MINUTES_DEPLOY_DIR repository variable."
+              exit 1
+            fi
+
+            cd "$DIR"
+            echo "Deploying in $DIR"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            git log --oneline -1
+
+            docker compose up -d --build
+            docker compose ps
+            echo "✅ Deployed $(git rev-parse --short HEAD)"
