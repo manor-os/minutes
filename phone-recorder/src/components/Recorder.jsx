@@ -19,6 +19,10 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('general');
   const [apiKeyWarning, setApiKeyWarning] = useState(null); // null | 'stt' | 'both'
+  const [captureSystemAudio, setCaptureSystemAudio] = useState(
+    localStorage.getItem('capture_system_audio') !== 'false'
+  );
+  const [audioSources, setAudioSources] = useState(null); // null | 'mic' | 'mixed'
 
   // Upload state
   const [uploadFile, setUploadFile] = useState(null);
@@ -29,6 +33,9 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
+  const micStreamRef = useRef(null);
+  const displayStreamRef = useRef(null);
+  const audioContextRef = useRef(null);
   const timerRef = useRef(null);
   const wsRef = useRef(null);
   const liveRecorderRef = useRef(null);
@@ -67,8 +74,13 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         try { mediaRecorderRef.current.stop(); } catch (_) {}
       }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => { try { t.stop(); } catch (_) {} });
+      [streamRef, micStreamRef, displayStreamRef].forEach(ref => {
+        if (ref.current) {
+          ref.current.getTracks().forEach(t => { try { t.stop(); } catch (_) {} });
+        }
+      });
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch (_) {}
       }
     };
   }, []);
@@ -96,14 +108,78 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
     startRecording();
   };
 
+  const stopAllMedia = () => {
+    [streamRef, micStreamRef, displayStreamRef].forEach(ref => {
+      if (ref.current) {
+        ref.current.getTracks().forEach(t => { try { t.stop(); } catch (_) {} });
+        ref.current = null;
+      }
+    });
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close(); } catch (_) {}
+      audioContextRef.current = null;
+    }
+  };
+
   const startRecording = async () => {
+    let micStream = null;
+    let displayStream = null;
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      micStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 }
       });
-      streamRef.current = stream;
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      if (onNotification) onNotification({ message: 'Microphone access denied. Please allow microphone permission.', type: 'error' });
+      return;
+    }
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    // Capture system/tab audio so remote participants are recorded too.
+    // The mic alone can't hear them: with headphones their voices never reach
+    // the mic, and echoCancellation strips speaker output from the mic signal.
+    if (captureSystemAudio && navigator.mediaDevices.getDisplayMedia) {
+      try {
+        displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true, // required for the share picker; the track is dropped below
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        });
+        displayStream.getVideoTracks().forEach(t => t.stop());
+        if (displayStream.getAudioTracks().length === 0) {
+          displayStream.getTracks().forEach(t => { try { t.stop(); } catch (_) {} });
+          displayStream = null;
+          if (onNotification) onNotification({ message: 'The shared screen has no audio — pick the meeting tab (or screen) and enable "Share audio". Recording microphone only.', type: 'error' });
+        }
+      } catch (error) {
+        displayStream = null;
+        if (onNotification) onNotification({ message: 'Screen sharing was cancelled — recording microphone only. Other participants\' voices won\'t be captured.', type: 'error' });
+      }
+    }
+
+    try {
+      let recordStream = micStream;
+      if (displayStream) {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === 'suspended') {
+          try { await audioContext.resume(); } catch (_) {}
+        }
+        const destination = audioContext.createMediaStreamDestination();
+        audioContext.createMediaStreamSource(micStream).connect(destination);
+        audioContext.createMediaStreamSource(displayStream).connect(destination);
+        audioContextRef.current = audioContext;
+        recordStream = destination.stream;
+        // If the user clicks the browser's "Stop sharing" bar, keep recording the mic
+        displayStream.getAudioTracks().forEach(t => {
+          t.onended = () => setAudioSources('mic');
+        });
+      }
+
+      micStreamRef.current = micStream;
+      displayStreamRef.current = displayStream;
+      streamRef.current = recordStream;
+      setAudioSources(displayStream ? 'mixed' : 'mic');
+
+      const mediaRecorder = new MediaRecorder(recordStream, { mimeType: 'audio/webm;codecs=opus' });
       audioChunksRef.current = [];
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
@@ -127,10 +203,12 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
       setIsRecording(true);
       setLiveSegments([]);
       setLiveStatus('Connecting...');
-      startLiveTranscription(stream);
+      startLiveTranscription(streamRef.current);
     } catch (error) {
       console.error('Error starting recording:', error);
-      if (onNotification) onNotification({ message: 'Microphone access denied. Please allow microphone permission.', type: 'error' });
+      stopAllMedia();
+      setAudioSources(null);
+      if (onNotification) onNotification({ message: `Could not start recording: ${error.message}`, type: 'error' });
     }
   };
 
@@ -218,9 +296,8 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
 
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-      }
+      stopAllMedia();
+      setAudioSources(null);
       setIsRecording(false);
       setLiveSegments([]);
     }
@@ -337,6 +414,20 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
                     placeholder="Quick notes or context..."
                     rows="2"
                   />
+                  <label className="recorder-toggle">
+                    <input
+                      type="checkbox"
+                      checked={captureSystemAudio}
+                      onChange={(e) => {
+                        setCaptureSystemAudio(e.target.checked);
+                        localStorage.setItem('capture_system_audio', String(e.target.checked));
+                      }}
+                    />
+                    <span className="recorder-toggle-text">
+                      <span className="recorder-toggle-title">Also record meeting audio (other participants)</span>
+                      <span className="recorder-toggle-hint">You'll be asked to share the meeting tab or screen — tick "Share audio" in the dialog</span>
+                    </span>
+                  </label>
                 </div>
 
                 {apiKeyWarning && (
@@ -397,7 +488,7 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
 
                 <div className="recording-label">
                   <span className="pulse-dot"></span>
-                  <span>Recording in progress</span>
+                  <span>{audioSources === 'mixed' ? 'Recording mic + meeting audio' : 'Recording microphone only'}</span>
                 </div>
 
                 <button className="btn-record btn-stop" onClick={stopRecording}>
