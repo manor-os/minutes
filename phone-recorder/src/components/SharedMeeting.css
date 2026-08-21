@@ -2,9 +2,9 @@
 
 .shared-meeting-page {
   min-height: 100vh;
-  background: #fafaf9;
-  font-family: var(--font);
-  color: #3f3b37;
+  background: #f8fafc;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #334155;
   display: flex;
   justify-content: center;
   padding: 40px 20px;
@@ -25,7 +25,7 @@
 }
 
 .shared-loading p {
-  color: #79716b;
+  color: #64748b;
   font-size: 14px;
   font-weight: 500;
 }
@@ -33,8 +33,8 @@
 .shared-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(79, 125, 117, 0.1);
-  border-top-color: var(--accent);
+  border: 4px solid rgba(15, 118, 110, 0.1);
+  border-top-color: #0f766e;
   border-radius: 50%;
   animation: shared-spin 1s linear infinite;
 }
@@ -51,12 +51,12 @@
 .shared-error h2 {
   font-size: 24px;
   font-weight: 800;
-  color: #181716;
+  color: #1e293b;
   margin-bottom: 12px;
 }
 
 .shared-error p {
-  color: #79716b;
+  color: #64748b;
   font-size: 15px;
   margin-bottom: 24px;
 }
@@ -64,7 +64,7 @@
 .shared-home-link {
   display: inline-block;
   padding: 10px 24px;
-  background: var(--accent);
+  background: #0f766e;
   color: #fff;
   border-radius: 10px;
   text-decoration: none;
@@ -74,20 +74,20 @@
 }
 
 .shared-home-link:hover {
-  background: var(--accent-hover);
+  background: #0d9488;
 }
 
 /* Header */
 .shared-header {
   margin-bottom: 32px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #e7e5e4;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .shared-header h1 {
   font-size: 28px;
   font-weight: 800;
-  color: #0e0d0c;
+  color: #0f172a;
   margin: 0 0 12px 0;
   letter-spacing: -0.025em;
 }
@@ -103,14 +103,14 @@
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #79716b;
+  color: #64748b;
   font-weight: 500;
 }
 
 /* Sections */
 .shared-section {
   background: #fff;
-  border: 1px solid #e7e5e4;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
@@ -119,7 +119,7 @@
 .shared-section h2 {
   font-size: 16px;
   font-weight: 700;
-  color: #181716;
+  color: #1e293b;
   margin: 0 0 16px 0;
   display: flex;
   align-items: center;
@@ -130,13 +130,13 @@
 .shared-summary {
   font-size: 15px;
   line-height: 1.7;
-  color: #57534e;
+  color: #475569;
 }
 
 .shared-summary h1,
 .shared-summary h2,
 .shared-summary h3 {
-  color: #181716;
+  color: #1e293b;
   margin-top: 16px;
   margin-bottom: 8px;
 }
@@ -152,7 +152,7 @@
 }
 
 .shared-summary code {
-  background: #f5f5f4;
+  background: #f1f5f9;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 13px;
@@ -170,8 +170,8 @@
   position: relative;
   font-size: 14px;
   line-height: 1.6;
-  color: #57534e;
-  border-bottom: 1px solid #f5f5f4;
+  color: #475569;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .shared-key-points li:last-child {
@@ -185,7 +185,7 @@
   top: 16px;
   width: 8px;
   height: 8px;
-  background: var(--accent);
+  background: #0f766e;
   border-radius: 50%;
 }
 
@@ -198,7 +198,7 @@
 
 .shared-action-item {
   padding: 12px 0 12px 16px;
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid #0f766e;
   margin-bottom: 12px;
 }
 
@@ -209,7 +209,7 @@
 .shared-action-task {
   font-size: 14px;
   font-weight: 600;
-  color: #181716;
+  color: #1e293b;
   line-height: 1.5;
 }
 
@@ -218,7 +218,7 @@
   gap: 16px;
   margin-top: 6px;
   font-size: 13px;
-  color: #79716b;
+  color: #64748b;
 }
 
 /* Transcript */
@@ -226,8 +226,8 @@
   white-space: pre-wrap;
   font-size: 13px;
   line-height: 1.8;
-  color: #57534e;
-  background: #fafaf9;
+  color: #475569;
+  background: #f8fafc;
   border-radius: 8px;
   padding: 16px;
   max-height: 500px;
@@ -243,12 +243,12 @@
 
 .shared-footer p {
   font-size: 13px;
-  color: #a6a099;
+  color: #94a3b8;
   margin: 0;
 }
 
 .shared-brand-link {
-  color: var(--accent);
+  color: #0f766e;
   font-weight: 700;
   text-decoration: none;
 }
@@ -259,50 +259,50 @@
 
 /* Dark mode support */
 [data-theme="dark"] .shared-meeting-page {
-  background: #0e0d0c;
-  color: #e7e5e4;
+  background: #0f172a;
+  color: #e2e8f0;
 }
 
 [data-theme="dark"] .shared-header h1 {
-  color: #f5f5f4;
+  color: #f1f5f9;
 }
 
 [data-theme="dark"] .shared-header {
-  border-bottom-color: #3f3b37;
+  border-bottom-color: #334155;
 }
 
 [data-theme="dark"] .shared-section {
-  background: #181716;
-  border-color: #3f3b37;
+  background: #1e293b;
+  border-color: #334155;
 }
 
 [data-theme="dark"] .shared-section h2 {
-  color: #f5f5f4;
+  color: #f1f5f9;
 }
 
 [data-theme="dark"] .shared-summary,
 [data-theme="dark"] .shared-key-points li,
 [data-theme="dark"] .shared-action-meta,
 [data-theme="dark"] .shared-transcript {
-  color: #a6a099;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .shared-action-task {
-  color: #e7e5e4;
+  color: #e2e8f0;
 }
 
 [data-theme="dark"] .shared-transcript {
-  background: #0e0d0c;
+  background: #0f172a;
 }
 
 [data-theme="dark"] .shared-error h2 {
-  color: #f5f5f4;
+  color: #f1f5f9;
 }
 
 @media (prefers-color-scheme: dark) {
   .shared-meeting-page:not([data-theme="light"] .shared-meeting-page) {
-    background: #0e0d0c;
-    color: #e7e5e4;
+    background: #0f172a;
+    color: #e2e8f0;
   }
 }
 
