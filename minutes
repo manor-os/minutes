@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+#
+# minutes — CLI for managing your Minutes instance
+#
+# Usage:
+#   ./minutes start          Start all services
+#   ./minutes stop           Stop all services
+#   ./minutes restart        Restart all services
+#   ./minutes status         Show service status
+#   ./minutes logs [service] View logs (backend, celery-worker, phone-recorder, etc.)
+#   ./minutes update         Pull latest version and restart
+#   ./minutes backup         Backup database and MinIO data
+#   ./minutes migrate        Run database migrations
+#   ./minutes shell          Open a shell in the backend container
+#   ./minutes db             Open a psql session
+#   ./minutes config         Edit .env configuration
+#   ./minutes health         Run health checks
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Detect compose command
+if docker compose version &>/dev/null; then
+  DC="docker compose"
+elif command -v docker-compose &>/dev/null; then
+  DC="docker-compose"
+else
+  echo "Error: Docker Compose not found. Install Docker Desktop." >&2
+  exit 1
+fi
+
+# Detect compose files
+COMPOSE_FILES="-f docker-compose.yml"
+if [ -f docker-compose.local.yml ] && grep -q "STT_MODE=local" .env 2>/dev/null; then
+  COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.local.yml"
+fi
+if [ -f docker-compose.cloud.yml ] && grep -q "EDITION=cloud" .env 2>/dev/null; then
+  COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.cloud.yml"
+fi
+if [ -f docker-compose.prod.yml ] && grep -q "PRODUCTION=true" .env 2>/dev/null; then
+  COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.prod.yml"
+fi
+
+compose() {
+  $DC $COMPOSE_FILES "$@"
+}
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+  start|up)
+    echo "Starting Minutes..."
+    compose up -d "$@"
+    echo ""
+    echo "  App:     http://localhost:9002"
+    echo "  API:     http://localhost:8002"
+    echo "  MinIO:   http://localhost:9011"
+    echo ""
+    ;;
+
+  stop|down)
+    echo "Stopping Minutes..."
+    compose down "$@"
+    ;;
+
+  restart)
+    echo "Restarting Minutes..."
+    compose restart "$@"
+    ;;
+
+  status|ps)
+    compose ps
+    ;;
+
+  logs)
+    if [ $# -eq 0 ]; then
+      compose logs -f --tail=100
+    else
+      compose logs -f --tail=100 "$@"
+    fi
+    ;;
+
+  update|upgrade)
+    echo "Updating Minutes..."
+    git pull origin main
+    compose build --no-cache
+    compose up -d
+    echo "Update complete."
+    ;;
+
+  backup)
+    BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$BACKUP_DIR"
+    echo "Backing up database..."
+    compose exec -T postgres pg_dump -U meeting_user meeting_notes > "$BACKUP_DIR/database.sql"
+    echo "Backing up .env..."
+    cp .env "$BACKUP_DIR/.env"
+    echo "Backup saved to $BACKUP_DIR/"
+    ls -la "$BACKUP_DIR/"
+    ;;
+
+  migrate)
+    echo "Running database migrations..."
+    compose exec backend python database/migrations/init_db.py
+    ;;
+
+  shell)
+    compose exec backend bash
+    ;;
+
+  db)
+    compose exec postgres psql -U meeting_user -d meeting_notes
+    ;;
+
+  config)
+    ${EDITOR:-nano} .env
+    echo "Restart to apply changes: ./minutes restart"
+    ;;
+
+  health)
+    echo "Checking services..."
+    echo ""
+    # Backend
+    if curl -sf http://localhost:8002/health >/dev/null 2>&1; then
+      echo "  Backend:   OK"
+    else
+      echo "  Backend:   DOWN"
+    fi
+    # Frontend
+    if curl -sf http://localhost:9002 >/dev/null 2>&1; then
+      echo "  Frontend:  OK"
+    else
+      echo "  Frontend:  DOWN"
+    fi
+    # PostgreSQL
+    if compose exec -T postgres pg_isready -U meeting_user >/dev/null 2>&1; then
+      echo "  Database:  OK"
+    else
+      echo "  Database:  DOWN"
+    fi
+    # Redis
+    if compose exec -T redis redis-cli ping >/dev/null 2>&1; then
+      echo "  Redis:     OK"
+    else
+      echo "  Redis:     DOWN"
+    fi
+    # MinIO
+    if curl -sf http://localhost:9010/minio/health/live >/dev/null 2>&1; then
+      echo "  MinIO:     OK"
+    else
+      echo "  MinIO:     DOWN"
+    fi
+    echo ""
+    ;;
+
+  help|--help|-h)
+    echo "Minutes — AI Meeting Transcription"
+    echo ""
+    echo "Usage: ./minutes <command>"
+    echo ""
+    echo "Commands:"
+    echo "  start          Start all services"
+    echo "  stop           Stop all services"
+    echo "  restart        Restart all services"
+    echo "  status         Show service status"
+    echo "  logs [name]    View logs (backend, celery-worker, phone-recorder)"
+    echo "  update         Pull latest version and restart"
+    echo "  backup         Backup database"
+    echo "  migrate        Run database migrations"
+    echo "  shell          Shell into backend container"
+    echo "  db             Open PostgreSQL console"
+    echo "  config         Edit .env configuration"
+    echo "  health         Check service health"
+    echo ""
+    ;;
+
+  *)
+    echo "Unknown command: $cmd"
+    echo "Run './minutes help' for usage."
+    exit 1
+    ;;
+esac

@@ -1,0 +1,17 @@
+# Community Edition — self-hosted, user brings own API keys
+# Usage: docker compose -f docker-compose.yml -f docker-compose.community.yml up -d
+services:
+  backend:
+    environment:
+      - EDITION=community
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@minutes.local}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+  celery-worker:
+    environment:
+      - EDITION=community
+  phone-recorder:
+    build:
+      args:
+        - VITE_EDITION=community
+        - VITE_DEFAULT_ADMIN_EMAIL=${ADMIN_EMAIL:-admin@minutes.local}
+        - VITE_DEFAULT_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
