@@ -1,0 +1,16 @@
+<svg width="160" height="36" viewBox="0 0 160 36" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <!-- Icon -->
+  <rect x="2" y="2" width="32" height="32" rx="8" fill="url(#logoGrad)"/>
+  <rect x="14.5" y="8" width="7" height="12" rx="3.5" fill="#fff"/>
+  <path d="M12 18a6 6 0 0 0 12 0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="18" y1="24" x2="18" y2="28" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="14.5" y1="28" x2="21.5" y2="28" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Text -->
+  <text x="42" y="24" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" fill="#1e293b" letter-spacing="-0.5">Minutes</text>
+</svg>
