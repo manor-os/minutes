@@ -64,3 +64,36 @@ After rotating the Manor OAuth client secret, update the GitHub Actions secret a
 2. Manor authenticates the user and redirects to `/auth/manor-callback`.
 3. The frontend posts the code to `POST /api/auth/oauth/manor/callback`.
 4. The backend exchanges the code with Manor, then returns a Minutes JWT for normal API access.
+
+## LLM Billing Through Manor
+
+Minutes never holds a provider key for Manor accounts. Every model call made
+for a user who signed in with Manor (or with Google through Manor) goes to the
+Manor LLM gateway instead of OpenRouter:
+
+```text
+POST {MANOR_API_BASE_URL}/api/v1/llm/chat/completions   (OpenAI wire format)
+GET  {MANOR_API_BASE_URL}/api/v1/llm/credit             (credit preflight)
+```
+
+The backend authenticates to the gateway with the same `MANOR_OAUTH_CLIENT_ID`
+/ `MANOR_OAUTH_CLIENT_SECRET` pair and names the account to bill:
+
+| Header | Value |
+|---|---|
+| `X-Manor-Client-Id` | `MANOR_OAUTH_CLIENT_ID` |
+| `X-Manor-Client-Secret` | `MANOR_OAUTH_CLIENT_SECRET` |
+| `X-Manor-Entity-Id` | the user's Manor `entity_id` |
+| `X-Manor-User-Id` | the user's Manor user id (attribution) |
+| `X-Manor-Business-Type` | `meeting_note` (summaries) or `meeting_chat` (AI chat) |
+
+Manor resolves the model, runs the provider call with its own key and debits
+the entity's credits as it goes. When the entity is out of credit the gateway
+answers `402`; Minutes surfaces that as "额度不足,请充值后再试。" and refuses new
+uploads, retries and chat until the account is topped up. Speech-to-text is
+not routed through Manor and still uses the server `OPENAI_API_KEY`.
+
+`MANOR_API_BASE_URL` defaults to the origin of `MANOR_OAUTH_TOKEN_URL`, so
+existing deployments need no new variable. Locally registered users are
+unaffected: they keep using the key saved in Settings and pay their provider
+directly.

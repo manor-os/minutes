@@ -10,7 +10,6 @@ psycopg2-binary==2.9.9
 redis==5.2.1
 celery>=5.3.3
 PyJWT==2.8.0
-pymysql==1.1.0
 bcrypt==4.0.1
 httpx>=0.27.0
 faster-whisper>=1.0.0
