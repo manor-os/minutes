@@ -101,3 +101,24 @@ server `OPENAI_API_KEY`.
 existing deployments need no new variable. Locally registered users are
 unaffected: they keep using the key saved in Settings and pay their provider
 directly.
+
+## Manor Agents Reading Meetings (MCP)
+
+Manor's built-in `manor_mcp_minutes` tools call the Minutes MCP endpoint at
+`/api/mcp` (served by `backend/mcp_server`, enabled in the cloud edition or
+with `MCP_HTTP_ENABLED=true`). Each call carries:
+
+| Header | Value |
+|---|---|
+| `X-API-Key` | `MEETING_NOTE_TAKER_API_KEY`, or the key both sides derive from the `minutes-cloud` OAuth client secret |
+| `X-Entity-Id` | the Manor entity the agent acts for; every tool is scoped to it |
+| `X-User-Id` | optional, the Manor user behind the agent (attribution only) |
+
+If you set an explicit `MEETING_NOTE_TAKER_API_KEY`, set the same value on
+both deployments; Manor falls back to the derived key when its explicit key is
+rejected, so a one-sided value degrades gracefully but should still be fixed.
+
+`chat_with_meeting` is the one tool that spends model tokens. It goes through
+the Manor LLM gateway billed to the calling entity (and user, when named),
+the same way web chat does; when the entity is out of credit the tool returns
+the out-of-credit message instead of an answer.

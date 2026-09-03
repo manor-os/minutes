@@ -155,3 +155,88 @@ def test_get_summary(client):
     text = _call_tool(client, "ent-1", "get_summary", {"meeting_id": "m-ent1"})
     assert "Planning summary" in text
     assert "Ship mobile in Q4" in text
+
+
+def test_list_recent_and_details_and_stats_are_entity_scoped(client):
+    recent = json.loads(_call_tool(client, "ent-1", "list_recent_meetings", {"limit": 5}))
+    assert [m["id"] for m in recent] == ["m-ent1"]
+
+    details = json.loads(_call_tool(client, "ent-1", "get_meeting_details", {"meeting_id": "m-ent1"}))
+    assert details["title"] == "Quarterly planning sync"
+    assert details["has_transcript"] is True
+    assert _call_tool(client, "ent-2", "get_meeting_details", {"meeting_id": "m-ent1"}) == "Meeting not found."
+
+    stats = json.loads(_call_tool(client, "ent-1", "get_meeting_stats", {}))
+    assert stats["total_meetings"] == 1
+    assert stats["by_status"] == {"completed": 1}
+
+    items = json.loads(_call_tool(client, "ent-1", "get_action_items", {"meeting_id": "m-ent1"}))
+    assert items[0]["task"] == "Draft plan"
+
+
+class _FakeCompletions:
+    def __init__(self, log):
+        self._log = log
+
+    def create(self, **kwargs):
+        self._log.append(kwargs)
+        from types import SimpleNamespace
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="FAKE: ship in Q4"))])
+
+
+class _FakeClient:
+    def __init__(self, log):
+        self.chat = type("Chat", (), {"completions": _FakeCompletions(log)})()
+
+
+def test_chat_with_meeting_uses_manor_gateway_for_the_acting_entity_and_user(client, monkeypatch):
+    import mcp_server.server as server_mod
+
+    resolved, calls = [], []
+
+    def fake_resolve_llm(*, route, user_keys=None, manor_ctx=None):
+        resolved.append((route, manor_ctx))
+        return _FakeClient(calls), "fake-model"
+
+    import api.services.llm_config as llm_config
+    monkeypatch.setattr(llm_config, "resolve_llm", fake_resolve_llm)
+
+    r = client.post(
+        "/api/mcp/",
+        headers={**_auth_headers("ent-1"), "X-User-Id": "usr-9"},
+        json=_rpc("tools/call", {"name": "chat_with_meeting",
+                                 "arguments": {"meeting_id": "m-ent1", "question": "When do we ship?"}}),
+    )
+    assert r.status_code == 200, r.text
+    result = r.json()["result"]
+    assert not result.get("isError"), result
+    assert result["content"][0]["text"] == "FAKE: ship in Q4"
+
+    assert resolved == [("manor", {"entity_id": "ent-1", "user_id": "usr-9", "business_type": "meeting_chat"})]
+    sent = calls[0]
+    assert sent["model"] == "fake-model"
+    assert "mobile release in Q4" in sent["messages"][1]["content"]
+    assert "When do we ship?" in sent["messages"][1]["content"]
+
+    # Another tenant cannot chat about ent-1's meeting, and no model call is made.
+    text = _call_tool(client, "ent-2", "chat_with_meeting", {"meeting_id": "m-ent1", "question": "?"})
+    assert text == "Meeting not found."
+    assert len(calls) == 1
+
+
+def test_chat_with_meeting_reports_credit_exhaustion(client, monkeypatch):
+    class _Exhausted(Exception):
+        status_code = 402
+
+    class _BrokenCompletions:
+        def create(self, **kwargs):
+            raise _Exhausted("out of credit")
+
+    class _BrokenClient:
+        chat = type("Chat", (), {"completions": _BrokenCompletions()})()
+
+    import api.services.llm_config as llm_config
+    monkeypatch.setattr(llm_config, "resolve_llm", lambda **kw: (_BrokenClient(), "m"))
+
+    text = _call_tool(client, "ent-1", "chat_with_meeting", {"meeting_id": "m-ent1", "question": "?"})
+    assert "credits are used up" in text

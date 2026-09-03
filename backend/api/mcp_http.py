@@ -6,26 +6,35 @@ service-level authentication so the Manor AI platform (and user tokens)
 can reach meeting tools over the network:
 
   * ``X-API-Key: <MEETING_NOTE_TAKER_API_KEY>`` + ``X-Entity-Id: <entity>``
-    — service-to-service (Manor agents acting for an entity)
+    — service-to-service (Manor agents acting for an entity). An optional
+    ``X-User-Id`` names the Manor user the agent acts for, so LLM usage
+    the tools cause (chat_with_meeting) is attributed to that user.
   * ``Authorization: Bearer <user JWT>`` — the token's own entity_id is used
 
-The resolved entity is bound to a ContextVar for the duration of the
-request, so every MCP tool query is tenant-scoped.
+The resolved entity (and user, when known) is bound to a ContextVar for the
+duration of the request, so every MCP tool query is tenant-scoped.
 """
 import contextlib
 import json
 
-from mcp_server.server import mcp, reset_request_entity_id, set_request_entity_id
+from mcp_server.server import (
+    mcp,
+    reset_request_entity_id,
+    reset_request_user_id,
+    set_request_entity_id,
+    set_request_user_id,
+)
 
 
-def _resolve_entity_id(headers: dict) -> str | None:
-    """Return the entity for this request, or None when unauthenticated."""
+def _resolve_principal(headers: dict) -> tuple[str | None, str | None]:
+    """(entity_id, user_id) for this request; entity None when unauthenticated."""
     from api.services.api_key_service import api_key_service
 
     api_key = headers.get("x-api-key")
     if api_key and api_key_service.validate_api_key(api_key):
         entity_id = (headers.get("x-entity-id") or "").strip()
-        return entity_id or None
+        user_id = (headers.get("x-user-id") or "").strip() or None
+        return (entity_id or None), user_id
 
     auth = headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
@@ -33,8 +42,14 @@ def _resolve_entity_id(headers: dict) -> str | None:
 
         payload = verify_token(auth[7:].strip())
         if payload and payload.get("entity_id"):
-            return str(payload["entity_id"])
-    return None
+            user_id = payload.get("user_id") or payload.get("sub")
+            return str(payload["entity_id"]), (str(user_id) if user_id else None)
+    return None, None
+
+
+def _resolve_entity_id(headers: dict) -> str | None:
+    """Return the entity for this request, or None when unauthenticated."""
+    return _resolve_principal(headers)[0]
 
 
 # Built once per process — FastMCP's session manager can only be started
@@ -66,7 +81,7 @@ class AuthenticatedMCPApp:
             k.decode("latin-1").lower(): v.decode("latin-1")
             for k, v in scope.get("headers") or []
         }
-        entity_id = _resolve_entity_id(headers)
+        entity_id, user_id = _resolve_principal(headers)
         if not entity_id:
             body = json.dumps({
                 "error": "unauthorized",
@@ -85,9 +100,11 @@ class AuthenticatedMCPApp:
             return
 
         token = set_request_entity_id(entity_id)
+        user_token = set_request_user_id(user_id)
         try:
             await self._app(scope, receive, send)
         finally:
+            reset_request_user_id(user_token)
             reset_request_entity_id(token)
 
 
