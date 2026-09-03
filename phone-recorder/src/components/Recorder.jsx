@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { MicIcon, StopIcon, UploadIcon, CloseIcon, FileTextIcon, ClockIcon } from './Icons';
+import { languageHeaders } from '../utils/language';
 import './Recorder.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8002';
@@ -321,13 +322,18 @@ function Recorder({ onRecordingComplete, isRecording, setIsRecording, onNotifica
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_BASE_URL}/api/meetings/upload`, {
         method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        headers: { ...languageHeaders(), ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: formData,
       });
 
       if (!response.ok) {
         const err = await response.text();
-        throw new Error(err);
+        let detail = err;
+        try {
+          const parsed = JSON.parse(err);
+          if (typeof parsed.detail === 'string') detail = parsed.detail;
+        } catch {}
+        throw new Error(detail);
       }
 
       const result = await response.json();

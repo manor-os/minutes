@@ -2,19 +2,31 @@
 Billing gateway: route each LLM operation by auth type and keep Manor-credit
 and BYO-key billing strictly separated.
 
-- classify(user)         -> "manor" | "byo"
-- ensure_credit(entity)  -> raises CreditExhaustedError if locked / no entity
-- report_usage(...)      -> fire-and-forget POST to Manor Java billing endpoint
+- classify(user)                  -> "manor" | "byo"
+- ensure_credit(entity_id, ...)   -> raises CreditExhaustedError when Manor says
+                                     the entity may not spend (or there is no entity)
+
+Manor accounts are never billed from Minutes itself. Every LLM call for them
+goes through the Manor LLM gateway (see ``llm_config.resolve_llm``), which
+debits the entity's credits as it runs the provider call. ``ensure_credit`` is
+only a preflight against that same gateway so expensive work (an upload that
+still has to be transcribed) is refused up front instead of failing after
+transcription.
 """
-import os
 from typing import Optional
 
 import httpx
 from loguru import logger
 
+from api.services.llm_config import (
+    ManorGatewayNotConfigured,
+    get_manor_gateway_url,
+    manor_gateway_headers,
+)
+
 
 class CreditExhaustedError(Exception):
-    """Manor entity is locked / out of credit, or unbillable (no entity)."""
+    """Manor entity is out of credit, or unbillable (no entity)."""
 
 
 def classify(user: dict) -> str:
@@ -28,86 +40,75 @@ def classify(user: dict) -> str:
     return "manor" if (user or {}).get("auth_source") in ("manor", "google") else "byo"
 
 
-def _entity_has_credit(entity_id) -> bool:
-    """Query Manor's MySQL `entity` table for the locked flag.
+def _manor_credit_available(entity_id, user_id=None) -> bool:
+    """Ask the Manor gateway whether the entity may spend credits right now.
 
-    locked = 1 / '1'  -> suspended / out of credit  -> False (block).
-    Entity not found  -> False (cannot bill an unknown entity).
-    Any connection / query error -> True (FAIL OPEN: don't punish users for a
-    transient Manor-DB outage).
-
-    Uses the same MANOR_AI_MYSQL_* config the upload endpoint already relies on
-    to look up sys_user, so no new infrastructure is required.
+    GET {MANOR_API_BASE_URL}/api/v1/llm/credit with Minutes' client credentials:
+      200            -> True
+      402            -> False (out of credit)
+      anything else / network error -> True (FAIL OPEN: a transient Manor
+                        outage must not block users; the gateway enforces the
+                        gate again on the actual LLM call).
     """
-    import pymysql
-    conn = None
     try:
-        conn = pymysql.connect(
-            host=os.getenv("MANOR_AI_MYSQL_HOST") or os.getenv("MYSQL_HOST", "localhost"),
-            port=int(os.getenv("MANOR_AI_MYSQL_PORT") or os.getenv("MYSQL_PORT", "3306")),
-            user=os.getenv("MANOR_AI_MYSQL_USERNAME") or os.getenv("MYSQL_USERNAME", "root"),
-            password=os.getenv("MANOR_AI_MYSQL_PASSWORD") or os.getenv("MYSQL_PASSWORD", ""),
-            database=os.getenv("MANOR_AI_MYSQL_DATABASE") or os.getenv("MYSQL_DATABASE", "manor"),
-            cursorclass=pymysql.cursors.DictCursor,
-        )
-        with conn.cursor() as cur:
-            cur.execute("SELECT locked FROM entity WHERE entity_id = %s LIMIT 1", (entity_id,))
-            row = cur.fetchone()
-        if not row:
-            return False
-        locked = row.get("locked")
-        return not (locked == 1 or locked == "1")
-    except Exception as exc:
-        logger.warning(f"Credit check failed for entity {entity_id}, failing open: {exc}")
+        headers = manor_gateway_headers(entity_id=entity_id, user_id=user_id)
+    except ManorGatewayNotConfigured as exc:
+        logger.warning(f"Manor credit preflight skipped: {exc}")
         return True
-    finally:
-        if conn is not None:
-            conn.close()
+    try:
+        resp = httpx.get(f"{get_manor_gateway_url()}/credit", headers=headers, timeout=5.0)
+    except Exception as exc:
+        logger.warning(f"Manor credit preflight failed for entity {entity_id}, failing open: {exc}")
+        return True
+    if resp.status_code == 200:
+        return True
+    if resp.status_code == 402:
+        return False
+    logger.warning(
+        f"Manor credit preflight returned {resp.status_code} for entity {entity_id}, failing open"
+    )
+    return True
 
 
-def ensure_credit(entity_id, auth=None) -> None:
+def ensure_credit(entity_id, user_id: Optional[str] = None, auth=None) -> None:
     """
     Gate a Manor-path operation on available credit.
 
-    Raises CreditExhaustedError when the entity is locked OR when there is no
-    entity_id (a Manor request that cannot be attributed must not run on the
-    shared key — that would leak cost across account types).
+    Raises CreditExhaustedError when Manor reports the entity is out of credit
+    OR when there is no entity_id (a Manor request that cannot be attributed
+    must not run — the gateway would reject it anyway).
 
-    Fails OPEN only on a transient backend error: the credit check returns True
-    when its DB read raises, so a Manor-DB outage does not block users.
+    Fails OPEN on a transient Manor outage so users are not punished for it.
 
     `auth` is a test seam: when provided, its `check_credit_available(entity_id)`
-    is used instead of the live Manor-DB lookup.
+    is used instead of the live gateway preflight.
     """
     if not entity_id:
         raise CreditExhaustedError("Manor request without entity_id cannot be billed")
     available = (
         auth.check_credit_available(entity_id)
         if auth is not None
-        else _entity_has_credit(entity_id)
+        else _manor_credit_available(entity_id, user_id=user_id)
     )
     if not available:
         raise CreditExhaustedError(f"Entity {entity_id} is out of credit")
 
 
-def report_usage(*, entity_id, user_id: Optional[str], client_name: Optional[str],
-                 input_tokens: int, output_tokens: int, business_type: str) -> None:
-    """Fire-and-forget: POST token usage to Manor Java /business/tokenLog/record."""
-    total = (input_tokens or 0) + (output_tokens or 0)
-    if total <= 0 or not entity_id:
-        return
-    java_host = (os.getenv("JAVA_HOST") or os.getenv("MANOR_BACKEND_URL", "http://localhost:8070")).rstrip("/")
-    payload = {
-        "entityId": str(entity_id),
-        "userId": str(user_id) if user_id else None,
-        "clientName": client_name or None,
-        "inputToken": int(input_tokens or 0),
-        "outputToken": int(output_tokens or 0),
-        "totalToken": int(total),
-        "trackedAgentKey": "meeting_note_taker",
-        "businessType": business_type,
-    }
-    try:
-        httpx.post(f"{java_host}/business/tokenLog/record", json=payload, timeout=5.0)
-    except Exception as exc:
-        logger.warning(f"Failed to report token usage to Manor Java: {exc}")
+def is_credit_exhausted_error(exc: BaseException) -> bool:
+    """True when an OpenAI-SDK error came from the Manor gateway's credit gate.
+
+    The gateway answers a plain HTTP 402 before streaming starts, and an
+    OpenAI-style ``{"error": {"code": 402}}`` event once a stream is open;
+    the SDK surfaces those as ``APIStatusError`` / ``APIError`` respectively.
+    """
+    if getattr(exc, "status_code", None) == 402:
+        return True
+    code = getattr(exc, "code", None)
+    if code in (402, "402"):
+        return True
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        err = body.get("error") if isinstance(body.get("error"), dict) else body
+        if err.get("code") in (402, "402") or err.get("type") == "insufficient_credit":
+            return True
+    return False

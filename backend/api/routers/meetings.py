@@ -26,6 +26,7 @@ from api.services.audio_service import AudioService
 from api.services.transcription_service import TranscriptionService
 from api.services.summarization_service import SummarizationService
 from api.middleware.auth_middleware import get_authenticated_user
+from api.services.messages import resolve_language, message as user_message
 from loguru import logger
 from api.services.storage_service import storage
 
@@ -51,7 +52,8 @@ async def upload_meeting_audio(
     background_tasks: BackgroundTasks,
     audio: UploadFile = File(...),
     metadata: str = Form(...),
-    user: dict = Depends(get_authenticated_user)
+    user: dict = Depends(get_authenticated_user),
+    lang: str = Depends(resolve_language),
 ):
     """
     Upload meeting audio file and start processing
@@ -180,9 +182,9 @@ async def upload_meeting_audio(
         if meeting_auth_source == "manor":
             from api.services.billing_service import ensure_credit, CreditExhaustedError
             try:
-                ensure_credit(entity_id)
+                ensure_credit(entity_id, user_id=str(user_id) if user_id else None)
             except CreditExhaustedError:
-                raise HTTPException(status_code=402, detail="额度不足,请充值后再试。")
+                raise HTTPException(status_code=402, detail=user_message("credit_exhausted", lang))
         meeting_id = await save_meeting(
             meeting,
             entity_id=str(entity_id),
@@ -225,6 +227,10 @@ async def upload_meeting_audio(
             "message": "Audio uploaded successfully. Processing started."
         })
         
+    except HTTPException:
+        # Deliberate client-facing errors (402 out of credit, 400 missing
+        # entity) must reach the user as-is, not be flattened into a 500.
+        raise
     except Exception as e:
         logger.error(f"Upload failed: {str(e)}")
         raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
@@ -719,7 +725,12 @@ async def list_templates():
 
 
 @router.post("/{meeting_id}/chat")
-async def chat_with_meeting(meeting_id: str, request: Request, user: dict = Depends(get_authenticated_user)):
+async def chat_with_meeting(
+    meeting_id: str,
+    request: Request,
+    user: dict = Depends(get_authenticated_user),
+    lang: str = Depends(resolve_language),
+):
     """Ask a question about a meeting's content using AI. Returns streaming SSE response."""
     from fastapi.responses import StreamingResponse
     import httpx as _httpx
@@ -734,17 +745,22 @@ async def chat_with_meeting(meeting_id: str, request: Request, user: dict = Depe
     if not question:
         raise HTTPException(status_code=400, detail="Question is required")
 
-    from api.services.billing_service import classify, ensure_credit, CreditExhaustedError, report_usage
+    from api.services.billing_service import (
+        classify, ensure_credit, CreditExhaustedError, is_credit_exhausted_error,
+    )
     from api.services.llm_config import resolve_llm, MissingKeyError
 
     route = classify(user)
     creator_user_id = user.get("user_id") or user.get("sub")
     chat_user_keys = None
+    # Manor accounts: the call itself runs through the Manor LLM gateway, which
+    # bills the entity's credits as it goes. Minutes only preflights the gate.
+    manor_ctx = {"entity_id": entity_id, "user_id": creator_user_id, "business_type": "meeting_chat"}
     if route == "manor":
         try:
-            ensure_credit(entity_id)
+            ensure_credit(entity_id, user_id=creator_user_id)
         except CreditExhaustedError:
-            raise HTTPException(status_code=402, detail="额度不足,请充值后再试。")
+            raise HTTPException(status_code=402, detail=user_message("credit_exhausted", lang))
     elif os.getenv("LLM_MODE", "cloud") != "local":
         # BYO users need their own key only when chatting via a cloud LLM.
         # In local (Ollama) mode no key is required, so don't block them.
@@ -753,7 +769,7 @@ async def chat_with_meeting(meeting_id: str, request: Request, user: dict = Depe
         try:
             resolve_llm(route="byo", user_keys=chat_user_keys)  # validate key presence early
         except MissingKeyError:
-            raise HTTPException(status_code=400, detail="请先在「设置」中添加 API key。")
+            raise HTTPException(status_code=400, detail=user_message("llm_key_missing", lang))
 
     # Build context from meeting data
     context_parts = []
@@ -810,9 +826,8 @@ async def chat_with_meeting(meeting_id: str, request: Request, user: dict = Depe
                                 except json.JSONDecodeError:
                                     pass
             else:
-                # OpenAI/OpenRouter streaming
-                _client, _model = resolve_llm(route=route, user_keys=chat_user_keys)
-                _usage = {"prompt_tokens": 0, "completion_tokens": 0}
+                # OpenAI-compatible streaming (Manor gateway or the user's own key)
+                _client, _model = resolve_llm(route=route, user_keys=chat_user_keys, manor_ctx=manor_ctx)
                 stream = _client.chat.completions.create(
                     model=_model,
                     messages=[
@@ -825,27 +840,17 @@ async def chat_with_meeting(meeting_id: str, request: Request, user: dict = Depe
                     stream_options={"include_usage": True},
                 )
                 for chunk in stream:
-                    if getattr(chunk, "usage", None):
-                        _usage["prompt_tokens"] = chunk.usage.prompt_tokens or 0
-                        _usage["completion_tokens"] = chunk.usage.completion_tokens or 0
                     delta = chunk.choices[0].delta if chunk.choices else None
                     if delta and delta.content:
                         yield f"data: {json.dumps({'token': delta.content})}\n\n"
 
-                if route == "manor":
-                    report_usage(
-                        entity_id=entity_id,
-                        user_id=creator_user_id,
-                        client_name=user.get("client_name"),
-                        input_tokens=_usage["prompt_tokens"],
-                        output_tokens=_usage["completion_tokens"],
-                        business_type="meeting_chat",
-                    )
-
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
             logger.error(f"Chat stream failed: {e}")
-            yield f"data: {json.dumps({'error': 'Failed to generate answer'})}\n\n"
+            if is_credit_exhausted_error(e):
+                yield f"data: {json.dumps({'error': user_message('credit_exhausted', lang), 'code': 'credit_exhausted'})}\n\n"
+            else:
+                yield f"data: {json.dumps({'error': 'Failed to generate answer'})}\n\n"
 
     return StreamingResponse(stream_response(), media_type="text/event-stream")
 
@@ -1022,7 +1027,12 @@ async def update_meeting(meeting_id: str, request: Request, user: dict = Depends
 
 
 @router.post("/{meeting_id}/retry")
-async def retry_processing(meeting_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_authenticated_user)):
+async def retry_processing(
+    meeting_id: str,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_authenticated_user),
+    lang: str = Depends(resolve_language),
+):
     """
     Retry processing a failed meeting, with entity_id access check
     """
@@ -1038,9 +1048,9 @@ async def retry_processing(meeting_id: str, background_tasks: BackgroundTasks, u
         from api.services.billing_service import classify, ensure_credit, CreditExhaustedError
         if classify(user) == "manor":
             try:
-                ensure_credit(entity_id)
+                ensure_credit(entity_id, user_id=user.get("user_id") or user.get("sub"))
             except CreditExhaustedError:
-                raise HTTPException(status_code=402, detail="额度不足,请充值后再试。")
+                raise HTTPException(status_code=402, detail=user_message("credit_exhausted", lang))
 
         meeting = await get_meeting_by_id(meeting_id, entity_id=str(entity_id))
 

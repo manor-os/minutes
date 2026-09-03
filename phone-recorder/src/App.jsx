@@ -13,6 +13,7 @@ import {
   MicIcon,
 } from "./components/Icons";
 import { IS_CLOUD } from "./config/edition";
+import { languageHeaders } from "./utils/language";
 import "./App.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8002"; // Backend API URL
@@ -633,7 +634,7 @@ function App() {
 
       // Upload asynchronously - don't wait for response
       const token = localStorage.getItem("auth_token");
-      const headers = {};
+      const headers = { ...languageHeaders() };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
@@ -650,7 +651,11 @@ function App() {
             let errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
             try {
               const errorJson = JSON.parse(errorText);
-              errorMessage = `Upload failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorJson)}`;
+              // The backend already phrases user-facing errors (e.g. out of
+              // credit) in the user's language — show them as-is.
+              errorMessage = typeof errorJson.detail === "string"
+                ? errorJson.detail
+                : `Upload failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorJson)}`;
             } catch {
               errorMessage = `Upload failed: ${response.status} ${response.statusText} - ${errorText}`;
             }

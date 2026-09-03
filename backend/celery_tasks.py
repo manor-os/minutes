@@ -172,6 +172,18 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
         except Exception as e:
             logger.warning(f"Could not load user API keys from DB: {e}")
 
+        # Manor accounts are billed by Manor itself: their summarization calls
+        # go through the Manor LLM gateway, so no local provider key is needed
+        # and a key the user saved in Settings is never used for them.
+        manor_route = False
+        try:
+            route_row = db.query(MeetingModel.auth_source).filter(MeetingModel.id == meeting_id).first()
+            manor_route = bool(route_row and (route_row[0] or "local") == "manor")
+        except Exception as e:
+            logger.warning(f"Could not resolve meeting auth_source for {meeting_id}: {e}")
+        if manor_route:
+            user_llm_key = user_llm_base_url = user_llm_model = None
+
         # Check local mode env vars
         stt_mode = os.getenv("STT_MODE", "cloud")
         llm_mode = os.getenv("LLM_MODE", "cloud")
@@ -197,7 +209,7 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
                 "No OpenAI API key available for Whisper transcription. "
                 "Please configure your OpenAI key in Settings, or set OPENAI_API_KEY env var."
             )
-        if llm_mode != "local" and not effective_llm_key:
+        if llm_mode != "local" and not manor_route and not effective_llm_key:
             raise RuntimeError(
                 "No LLM API key available for summarization. "
                 "Please configure your LLM key in Settings, or set OPENROUTER_API_KEY env var."
@@ -237,7 +249,12 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
 
         transcription_service = None if stt_mode == "local" else TranscriptionService()
         logger.info(f"LLM key for summarization: {'set (' + str(len(os.getenv('OPENROUTER_API_KEY', ''))) + ' chars)' if os.getenv('OPENROUTER_API_KEY') else 'NOT SET'}, OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'NOT SET'}")
-        summarization_service = None if llm_mode == "local" else SummarizationService()
+        if llm_mode == "local" or manor_route:
+            # Manor meetings get a gateway-backed service once the meeting row
+            # (entity / creator) is loaded below.
+            summarization_service = None
+        else:
+            summarization_service = SummarizationService()
 
         logger.info(f"Starting processing for meeting {meeting_id}")
         
@@ -255,6 +272,19 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
         meeting.status = MeetingStatusEnum.PROCESSING
         db.commit()
         logger.info(f"Meeting {meeting_id} status updated to PROCESSING")
+
+        if manor_route and llm_mode != "local":
+            from api.services.llm_config import resolve_llm
+            gateway_client, gateway_model = resolve_llm(
+                route="manor",
+                manor_ctx={
+                    "entity_id": meeting.entity_id,
+                    "user_id": meeting.created_by_user_id,
+                    "business_type": "meeting_note",
+                },
+            )
+            summarization_service = SummarizationService(client=gateway_client, model=gateway_model)
+            logger.info(f"Meeting {meeting_id}: summarization routed through the Manor LLM gateway")
         
         # Resolve audio file path via storage backend
         store = storage()
@@ -423,23 +453,8 @@ def process_meeting_task(self, meeting_id: str, audio_filepath: str, language: s
                 "currency": "USD"
             }
 
-            summarization_tokens = notes.get("token_cost", {})
-            # Report usage to Manor ONLY for Manor-SSO meetings (BYO users pay
-            # their own provider on their own key — never cross-bill them to Manor).
-            if (getattr(meeting, "auth_source", None) or "local") == "manor":
-                from api.services.billing_service import report_usage
-                report_usage(
-                    entity_id=meeting.entity_id,
-                    user_id=meeting.created_by_user_id,
-                    client_name=None,
-                    input_tokens=summarization_tokens.get("summary", {}).get("prompt_tokens", 0)
-                        + summarization_tokens.get("key_points", {}).get("prompt_tokens", 0)
-                        + summarization_tokens.get("action_items", {}).get("prompt_tokens", 0),
-                    output_tokens=summarization_tokens.get("summary", {}).get("completion_tokens", 0)
-                        + summarization_tokens.get("key_points", {}).get("completion_tokens", 0)
-                        + summarization_tokens.get("action_items", {}).get("completion_tokens", 0),
-                    business_type="meeting_note",
-                )
+            # Manor meetings were billed by the Manor gateway as each call ran;
+            # BYO meetings ran on the user's own key. Nothing to report here.
 
             # Update meeting with results
             meeting.transcript = transcript_text

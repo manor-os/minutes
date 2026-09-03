@@ -1,7 +1,12 @@
 # Manor Credit Billing & BYO-Key Gateway for Minutes — Design
 
 **Date:** 2026-06-06
-**Status:** Approved (pending final spec review)
+**Status:** Superseded for the Manor path — Manor accounts now call the Manor
+LLM gateway (`/api/v1/llm/chat/completions`) directly, which gates and bills
+credits itself; the `entity.locked` MySQL gate and the Java
+`/business/tokenLog/record` reporting described below were removed. See
+`docs/docs/configuration/manor-oauth.md` ("LLM Billing Through Manor"). The
+BYO-key path is unchanged.
 **Scope:** meeting-note-taker (Minutes) backend
 
 ## Problem

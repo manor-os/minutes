@@ -1,12 +1,24 @@
 """
 Shared LLM configuration for the meeting-note-taker service.
 
-Uses the same OpenRouter key & base URL as manor-multi-agent so all
-sub-projects share a single billing path.  Falls back to OPENAI_API_KEY
-for local dev environments that don't have OpenRouter configured.
+Two ways an LLM call can be routed:
+
+* ``manor``  – the request belongs to a Manor account. Minutes never holds a
+  provider key for these users: the OpenAI-compatible client points at the
+  Manor LLM gateway (``{MANOR_API_BASE_URL}/api/v1/llm``), authenticating with
+  the OAuth client credentials Manor issued to Minutes and naming the entity
+  / user to bill. Manor resolves the model, runs the provider call and debits
+  the entity's credits itself.
+* ``byo``    – a locally registered user. Their own ``llm_api_key`` /
+  ``llm_base_url`` / ``llm_model`` from Settings are used and they pay the
+  provider directly.
+
+The server-wide ``OPENROUTER_API_KEY`` / ``OPENAI_API_KEY`` remain for
+community deployments and for STT, which is not routed through Manor.
 """
 import os
 from typing import Optional
+from urllib.parse import urlsplit
 
 from openai import OpenAI
 
@@ -82,19 +94,91 @@ def get_openrouter_client(api_key: Optional[str] = None, base_url: Optional[str]
     return OpenAI(api_key=resolved_key, base_url=resolved_url)
 
 
+# ── Manor LLM gateway ──
+
+
+def get_manor_api_base_url() -> str:
+    """Origin of the Manor API, e.g. ``https://app.manorai.xyz``.
+
+    ``MANOR_API_BASE_URL`` wins; otherwise it is derived from the OAuth token
+    URL the cloud edition already configures, so no new variable is required
+    for existing deployments.
+    """
+    explicit = (os.getenv("MANOR_API_BASE_URL") or "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    token_url = (os.getenv("MANOR_OAUTH_TOKEN_URL") or "").strip()
+    if token_url:
+        parts = urlsplit(token_url)
+        if parts.scheme and parts.netloc:
+            return f"{parts.scheme}://{parts.netloc}"
+    return "https://app.manorai.xyz"
+
+
+def get_manor_gateway_url() -> str:
+    """OpenAI-compatible base URL of the Manor gateway (``.../api/v1/llm``)."""
+    return f"{get_manor_api_base_url()}/api/v1/llm"
+
+
+class ManorGatewayNotConfigured(Exception):
+    """Minutes has no Manor OAuth client credentials to call the gateway with."""
+
+
+def get_manor_client_credentials() -> tuple:
+    """(client_id, client_secret) Minutes uses to call Manor on a user's behalf."""
+    client_id = (os.getenv("MANOR_OAUTH_CLIENT_ID") or "").strip()
+    client_secret = (os.getenv("MANOR_OAUTH_CLIENT_SECRET") or "").strip()
+    if not client_id or not client_secret:
+        raise ManorGatewayNotConfigured(
+            "MANOR_OAUTH_CLIENT_ID / MANOR_OAUTH_CLIENT_SECRET must be set to route "
+            "Manor accounts through the Manor LLM gateway."
+        )
+    return client_id, client_secret
+
+
+def manor_gateway_headers(*, entity_id, user_id=None, business_type: Optional[str] = None) -> dict:
+    """Headers that authenticate Minutes to the gateway and name who is billed."""
+    client_id, client_secret = get_manor_client_credentials()
+    headers = {
+        "X-Manor-Client-Id": client_id,
+        "X-Manor-Client-Secret": client_secret,
+        "X-Manor-Entity-Id": str(entity_id),
+    }
+    if user_id:
+        headers["X-Manor-User-Id"] = str(user_id)
+    if business_type:
+        headers["X-Manor-Business-Type"] = business_type
+    return headers
+
+
+def get_manor_gateway_client(*, entity_id, user_id=None, business_type: Optional[str] = None) -> OpenAI:
+    """OpenAI-compatible client whose every call is billed to a Manor entity."""
+    if not entity_id:
+        raise ValueError("entity_id is required to route a call through the Manor gateway")
+    return OpenAI(
+        # The gateway authenticates with the client headers; the SDK still
+        # insists on a non-empty key, so send a placeholder bearer.
+        api_key="manor-gateway",
+        base_url=get_manor_gateway_url(),
+        default_headers=manor_gateway_headers(
+            entity_id=entity_id, user_id=user_id, business_type=business_type,
+        ),
+    )
+
+
 class MissingKeyError(Exception):
     """A BYO-key user has no LLM API key configured."""
 
 
-def resolve_llm(*, route: str, user_keys: Optional[dict]):
+def resolve_llm(*, route: str, user_keys: Optional[dict] = None, manor_ctx: Optional[dict] = None):
     """
     Return (OpenAI-compatible client, model_name) for the given route.
 
-    route == "manor": shared server key + base URL (existing behavior).
+    route == "manor": client pointed at the Manor LLM gateway, billed to
+                      ``manor_ctx["entity_id"]`` (with optional ``user_id``
+                      and ``business_type`` for attribution).
     route == "byo":   the user's own llm_api_key / llm_base_url / llm_model.
                       Raises MissingKeyError if no llm_api_key is set.
-    Built on get_openrouter_client(api_key=, base_url=) so per-user keys reuse
-    the same provider auto-detection as the shared path.
     """
     if route == "byo":
         keys = user_keys or {}
@@ -104,5 +188,11 @@ def resolve_llm(*, route: str, user_keys: Optional[dict]):
         base_url = (keys.get("llm_base_url") or "").strip() or None
         model = (keys.get("llm_model") or "").strip() or get_llm_model()
         return get_openrouter_client(api_key=api_key, base_url=base_url), model
-    # Manor / shared
-    return get_openrouter_client(), get_llm_model()
+
+    ctx = manor_ctx or {}
+    client = get_manor_gateway_client(
+        entity_id=ctx.get("entity_id"),
+        user_id=ctx.get("user_id"),
+        business_type=ctx.get("business_type"),
+    )
+    return client, get_llm_model()
