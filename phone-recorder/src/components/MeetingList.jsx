@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { languageHeaders } from '../utils/language';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -100,6 +101,7 @@ function MeetingList({ recordings, onRefresh, onNotification, currentUser, searc
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
+      Object.assign(headers, languageHeaders());
       
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8002';
       const response = await fetch(`${API_BASE_URL}/api/meetings/${meetingId}/retry`, {

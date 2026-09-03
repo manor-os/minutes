@@ -89,9 +89,13 @@ The backend authenticates to the gateway with the same `MANOR_OAUTH_CLIENT_ID`
 
 Manor resolves the model, runs the provider call with its own key and debits
 the entity's credits as it goes. When the entity is out of credit the gateway
-answers `402`; Minutes surfaces that as "额度不足,请充值后再试。" and refuses new
-uploads, retries and chat until the account is topped up. Speech-to-text is
-not routed through Manor and still uses the server `OPENAI_API_KEY`.
+answers `402`; Minutes refuses new uploads, retries and chat until the account
+is topped up and shows the "out of credit" message in the user's language: the
+frontend sends the language chosen under Settings → Transcript Language as
+`X-Language`, the backend falls back to the browser's `Accept-Language`, and
+English is the default (see `backend/api/services/messages.py` for the
+translations). Speech-to-text is not routed through Manor and still uses the
+server `OPENAI_API_KEY`.
 
 `MANOR_API_BASE_URL` defaults to the origin of `MANOR_OAUTH_TOKEN_URL`, so
 existing deployments need no new variable. Locally registered users are
