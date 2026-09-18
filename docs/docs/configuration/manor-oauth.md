@@ -1,0 +1,66 @@
+---
+sidebar_position: 1
+title: Manor OAuth Setup
+---
+
+# Manor OAuth Setup
+
+Manor sign-in is available in the cloud edition only and can run alongside Google sign-in. Community edition keeps the local email/password account flow.
+
+## Configure
+
+Set these variables on the backend:
+
+```bash
+EDITION=cloud
+MANOR_OAUTH_CLIENT_ID=minutes-cloud
+MANOR_OAUTH_CLIENT_SECRET=your-client-secret
+MANOR_OAUTH_AUTHORIZE_URL=https://app.manorai.xyz/oauth/authorize
+MANOR_OAUTH_TOKEN_URL=https://app.manorai.xyz/api/v1/oauth/token
+MANOR_OAUTH_REDIRECT_URI=https://minutes.manorai.xyz/auth/manor-callback
+```
+
+`MANOR_OAUTH_REDIRECT_URI` must match the redirect URI registered in Manor. The client secret stays server-side and is never exposed to the frontend.
+
+## Seed Client
+
+On the Manor side, generate or rotate the secret with the same seed script used by `manor-portfolio`, overriding the client id and redirect URIs for Minutes:
+
+```bash
+cd /path/to/manor-cloud
+MANOR_PMS_OAUTH_CLIENT_ID=minutes-cloud \
+MANOR_PMS_OAUTH_REDIRECT_URIS="https://minutes.manorai.xyz/auth/manor-callback,http://localhost:9002/auth/manor-callback,http://localhost:3001/auth/manor-callback" \
+python scripts/seed_oauth_client_pms.py
+```
+
+The script prints:
+
+```bash
+MANOR_OAUTH_CLIENT_ID=minutes-cloud
+MANOR_OAUTH_CLIENT_SECRET=<generated-secret>
+```
+
+For manual deployments, copy the generated `MANOR_OAUTH_CLIENT_SECRET` into the Minutes deployment `.env`, then restart the backend. For GitHub Actions deployments, use the repository secret flow below.
+
+## GitHub Actions Deploy
+
+For the cloud deployment pipeline, save the generated secret as a GitHub Actions repository secret:
+
+```bash
+MANOR_OAUTH_CLIENT_SECRET=<generated-secret>
+```
+
+The `deploy-cloud` workflow passes this secret to the production server over SSH and exports it for `docker compose`, so `docker-compose.cloud.yml` can inject it into the backend container:
+
+```bash
+MANOR_OAUTH_CLIENT_SECRET=<generated-secret>
+```
+
+After rotating the Manor OAuth client secret, update the GitHub Actions secret and rerun the deployment workflow. No manual server-side `.env` edit is needed for the cloud deployment.
+
+## Flow
+
+1. The cloud login page calls `GET /api/auth/oauth/manor/start`.
+2. Manor authenticates the user and redirects to `/auth/manor-callback`.
+3. The frontend posts the code to `POST /api/auth/oauth/manor/callback`.
+4. The backend exchanges the code with Manor, then returns a Minutes JWT for normal API access.

@@ -1,0 +1,23 @@
+{
+  "name": "create-manor-minutes",
+  "version": "1.0.0",
+  "description": "Set up Minutes — AI meeting transcription in one command",
+  "bin": {
+    "create-manor-minutes": "index.mjs"
+  },
+  "type": "module",
+  "license": "MIT",
+  "author": "Manor AI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/manor-os/minutes.git"
+  },
+  "keywords": [
+    "meeting",
+    "transcription",
+    "ai",
+    "minutes",
+    "whisper",
+    "summarization"
+  ]
+}

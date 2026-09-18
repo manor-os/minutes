@@ -1,0 +1,10 @@
+# Local development overrides
+# This file is automatically used by docker-compose for local development (port 3002)
+# For production, use: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  phone-recorder:
+    ports:
+      - "3002:3001"  # Local development port
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8002}  # Local development API URL

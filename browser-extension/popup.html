@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Meeting Note Taker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 360px;
+      padding: 20px;
+      font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      background: #f5f5f6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      background: linear-gradient(to right, #000, #1e293b);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      margin-bottom: 6px;
+    }
+    
+    .header p {
+      font-size: 12px;
+      font-weight: 500;
+      color: #64748b;
+    }
+    
+    .status {
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 0 #0000, 0 0 #0000, 0 4px 12px -2px rgb(0 0 0 / 0.1);
+    }
+    
+    .status.recording {
+      background: rgba(220, 252, 231, 0.6);
+      border: 1px solid rgba(22, 163, 74, 0.3);
+    }
+    
+    .status-idle {
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .status-recording {
+      color: #16a34a;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .status-recording.hidden {
+      display: none !important;
+    }
+    
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15);
+    }
+    
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .btn-record {
+      background: #0f766e;
+      color: white;
+      box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
+    }
+    
+    .btn-record:hover:not(:disabled) {
+      background: #0d9488;
+      box-shadow: 0 6px 16px rgba(15, 118, 110, 0.4);
+    }
+    
+    .btn-stop {
+      background: #dc2626;
+      color: white;
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+    
+    .btn-stop:hover:not(:disabled) {
+      background: #b91c1c;
+      box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+    }
+    
+    .btn-view {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(203, 213, 225, 0.5);
+      color: #0f766e;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    
+    .btn-view:hover:not(:disabled) {
+      background: rgba(240, 253, 250, 0.8);
+      border-color: #0f766e;
+      color: #0d9488;
+    }
+    
+    .info {
+      margin-top: 16px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      font-size: 12px;
+      color: #64748b;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 0 #0000, 0 0 #0000, 0 4px 12px -2px rgb(0 0 0 / 0.1);
+    }
+    
+    .info-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #1e293b;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    #meetingInfo {
+      color: #334155;
+      font-weight: 500;
+      font-size: 13px;
+    }
+    
+    #viewMeetingLink {
+      color: #0f766e;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 13px;
+      transition: color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    #viewMeetingLink:hover {
+      color: #0d9488;
+      text-decoration: underline;
+    }
+    
+    #recordingTime {
+      font-size: 20px;
+      font-weight: 800;
+      color: #16a34a;
+      margin-top: 6px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
+      display: block !important;
+    }
+    
+    .btn-stop:not(.hidden) {
+      display: block !important;
+    }
+    
+    .status-recording:not(.hidden) {
+      display: flex !important;
+    }
+    
+    #errorMessage {
+      margin-top: 12px;
+      padding: 14px;
+      background: rgba(254, 226, 226, 0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      border-radius: 12px;
+      font-size: 12px;
+      color: #dc2626;
+      white-space: pre-line;
+      max-height: 200px;
+      overflow-y: auto;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    
+    #errorMessage::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    #errorMessage::-webkit-scrollbar-thumb {
+      background: rgba(220, 38, 38, 0.3);
+      border-radius: 2px;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    /* Pulse animation for recording indicator */
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+    
+    .status-recording div:first-child {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    
+    .status-recording div:first-child::before {
+      content: "●";
+      color: #16a34a;
+      font-size: 12px;
+      animation: pulse 1.5s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Meeting Note Taker</h1>
+    <p>AI-powered meeting transcription</p>
+  </div>
+  
+  <!-- Login Section -->
+  <div id="loginSection" class="hidden">
+    <div class="status">
+      <div class="status-idle" style="margin-bottom: 16px;">Please login to use Meeting Note Taker</div>
+      <form id="loginForm" style="display: flex; flex-direction: column; gap: 12px;">
+        <input 
+          type="email" 
+          id="loginEmail" 
+          placeholder="Email address" 
+          required
+          style="padding: 10px; border: 1px solid rgba(203, 213, 225, 0.5); border-radius: 8px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif;"
+        />
+        <input 
+          type="password" 
+          id="loginPassword" 
+          placeholder="Password" 
+          required
+          style="padding: 10px; border: 1px solid rgba(203, 213, 225, 0.5); border-radius: 8px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif;"
+        />
+        <button type="submit" class="btn-record" id="btnLogin" style="margin-top: 4px;">
+          Login
+        </button>
+      </form>
+      <div style="margin-top: 12px; font-size: 11px; color: #64748b; text-align: center;">
+        <a id="viewMeetingsLink" href="#" target="_blank" style="color: #0f766e; text-decoration: none;">
+          Or login on the web app →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Section (shown after login) -->
+  <div id="mainSection">
+    <div class="status" id="status">
+      <div class="status-idle" id="statusIdle">Ready to record</div>
+      <div class="status-recording hidden" id="statusRecording">
+        <div>Recording in progress...</div>
+        <div id="recordingTime">00:00</div>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <button id="btnRecord" class="btn-record">Start Recording</button>
+      <button id="btnStop" class="btn-stop hidden">Stop Recording</button>
+      <button id="btnView" class="btn-view">View Notes</button>
+      <button id="btnLogout" class="btn-view" style="margin-top: 8px; font-size: 12px; padding: 8px 16px;">
+        Logout
+      </button>
+    </div>
+    
+    <div class="info">
+      <div class="info-title">Current Meeting:</div>
+      <div id="meetingInfo">No meeting detected</div>
+      <div id="meetingLink" class="hidden" style="margin-top: 8px;">
+        <a href="#" id="viewMeetingLink" target="_blank">
+          View Meeting Notes →
+        </a>
+      </div>
+    </div>
+  </div>
+  
+  <div id="errorMessage" class="hidden"></div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
+

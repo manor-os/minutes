@@ -1,0 +1,260 @@
+/* One neutral palette for the app, standalone pages, and portaled dialogs. */
+:root {
+  color-scheme: light;
+  --ui-bg: #fafafa;
+  --ui-surface: #fff;
+  --ui-text: #202020;
+  --ui-muted: #737373;
+  --ui-line: #e8e8e8;
+  --ui-soft: #f5f5f5;
+  --ui-solid: #202020;
+  --ui-on-solid: #fff;
+  --ui-hover: #393939;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-primary: var(--ui-solid);
+  --color-primary-hover: var(--ui-hover);
+  --color-primary-light: var(--ui-soft);
+  --color-primary-border: var(--ui-line);
+  --color-success: var(--ui-text);
+  --color-success-light: var(--ui-soft);
+  --color-success-border: var(--ui-line);
+  --color-danger: var(--ui-text);
+  --color-danger-hover: var(--ui-hover);
+  --color-danger-light: var(--ui-soft);
+  --color-danger-border: var(--ui-line);
+  --color-blue: var(--ui-text);
+  --color-blue-light: var(--ui-soft);
+  --color-blue-border: var(--ui-line);
+  --color-amber: var(--ui-muted);
+  --color-amber-light: var(--ui-soft);
+  --color-amber-border: var(--ui-line);
+  --text-primary: var(--ui-text);
+  --text-secondary: #5b5b5b;
+  --text-tertiary: var(--ui-muted);
+  --text-muted: #858585;
+  --bg-page: var(--ui-bg);
+  --bg-card: var(--ui-surface);
+  --bg-subtle: var(--ui-soft);
+  --bg-input: var(--ui-surface);
+  --border-light: var(--ui-line);
+  --border-default: var(--ui-line);
+  --border-medium: #d1d1d1;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: 0 12px 40px #0000000a;
+  --shadow-xl: 0 24px 80px #00000012;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ui-bg: #141414;
+  --ui-surface: #1c1c1c;
+  --ui-text: #ededed;
+  --ui-muted: #a0a0a0;
+  --ui-line: #303030;
+  --ui-soft: #242424;
+  --ui-solid: #ededed;
+  --ui-on-solid: #181818;
+  --ui-hover: #d4d4d4;
+  --text-secondary: #b5b5b5;
+  --text-muted: #979797;
+  --border-medium: #494949;
+}
+:root:root body { color: var(--ui-text); background: var(--ui-bg); font-family: var(--font); }
+:root .app.app-minimal {
+  --shell-background: var(--ui-bg); --shell-surface: var(--ui-surface);
+  --shell-text: var(--ui-text); --shell-muted: var(--ui-muted);
+  --shell-line: var(--ui-line); --shell-hover: var(--ui-soft); --shell-avatar: var(--ui-soft);
+}
+:root .app-minimal > .app-main-list { max-width: 1120px; padding-top: 40px; }
+:root .app-minimal > .app-main-recorder { padding-top: 36px; }
+:root .app-minimal > .app-header { min-height: 60px; padding: 0 28px; background: var(--ui-surface); }
+:root .app-minimal .app-header .app-brand-icon { width: 25px; height: 25px; }
+:root[data-theme="dark"] .app-brand-icon { filter: invert(1); }
+:root .app-minimal .app-header .app-wordmark { font-size: 16px; font-weight: 650; }
+:root .app-minimal .app-header .nav-tabs { gap: 8px; }
+:root .app-minimal .app-header .nav-tabs button {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ui-muted);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 500;
+  transform: none;
+}
+:root .app-minimal .app-header .nav-tabs button:hover {
+  border: 0;
+  background: transparent;
+  color: var(--ui-text);
+  box-shadow: none;
+  transform: none;
+}
+:root .app-minimal .app-header .nav-tabs button.active,
+:root .app-minimal .app-header .nav-tabs button.active:hover {
+  border: 0;
+  background: transparent;
+  color: var(--ui-text);
+  box-shadow: inset 0 -1px var(--ui-text);
+  transform: none;
+}
+:root .app-minimal .app-footer .manor-ai-brand { letter-spacing: 0; }
+:root:root :is(button, input, select, textarea) { font-family: var(--font); }
+:root:root input[type="checkbox"] { accent-color: var(--ui-solid); }
+:root:root :is(button, summary, input, select, textarea):focus-visible { outline: 2px solid var(--ui-text); outline-offset: 3px; }
+:root:root :is(input, select, textarea):focus { box-shadow: none; }
+
+/* The controls use weight and contrast, rather than a different color per action. */
+:root:root :is(.settings-content, .meeting-detail-modal, .share-dialog, .login-card, .usage-content, .recorder-card, .user-profile-dropdown, .live-panel) {
+  background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-line); box-shadow: none;
+}
+:root:root :is(.settings-modal, .meeting-detail-overlay, .share-dialog-overlay, .usage-modal) { background: #00000038; backdrop-filter: blur(3px); }
+:root:root :is(.settings-header, .settings-body, .settings-actions, .detail-header, .detail-body, .detail-footer, .detail-actions, .usage-header, .usage-body, .live-panel-header) { background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-line); }
+:root:root :is(.settings-header, .detail-header, .usage-header) h2 { color: var(--ui-text); font-weight: 600; font-size: 22px; letter-spacing: -.7px; }
+:root:root :is(.section-title, .settings-section-title, .usage-section-title) { color: var(--ui-text); font-weight: 500; letter-spacing: 0; }
+:root:root :is(.settings-section-desc, .form-help, .checkbox-description, .recorder-subtitle, .recorder-toggle-hint, .upload-formats, .file-size, .live-panel-empty, .detail-header-meta, .action-meta, .action-label, .profile-email, .login-subtitle, .login-help, .usage-loading, .usage-card-label, .usage-card-sub, .usage-day-label, .shared-meta-item) { color: var(--ui-muted); }
+:root:root :is(.form-group input, .form-group select, .form-select, .recorder-input, .recorder-select, .recorder-textarea, .summary-textarea, .action-edit-task, .action-edit-assignee, .action-edit-due, .share-link-input, .chat-input) { background: var(--ui-surface); color: var(--ui-text); border: 1px solid var(--ui-line); border-radius: 6px; box-shadow: none; }
+:root:root :is(.form-group input, .form-group select, .form-select, .recorder-input, .recorder-select, .recorder-textarea, .summary-textarea, .action-edit-task, .action-edit-assignee, .action-edit-due, .share-link-input, .chat-input):focus { background: var(--ui-surface); border-color: var(--ui-muted); box-shadow: none; }
+:root:root :is(.form-group input:disabled, .login-form input:disabled) { background: var(--ui-soft); color: var(--ui-muted); }
+:root:root :is(.form-group label, .checkbox-text strong, .recorder-hero h2, .recorder-toggle-title, .upload-cta, .file-name, .recording-time, .action-task, .action-value, .profile-name, .usage-card-value, .usage-day-count) { color: var(--ui-text); }
+:root:root :is(.btn-primary, .btn-save, .btn-save-small, .btn-start, .btn-stop, .btn-login, .btn-copy-link, .chat-send-btn, .api-key-warning-btn-settings, .shared-home-link) {
+  background: var(--ui-solid); color: var(--ui-on-solid); border-color: var(--ui-solid); box-shadow: none; border-radius: 6px; font-weight: 500; transform: none;
+}
+:root:root :is(.btn-primary, .btn-save, .btn-save-small, .btn-start, .btn-stop, .btn-login, .btn-copy-link, .chat-send-btn, .api-key-warning-btn-settings, .shared-home-link):hover:not(:disabled) { background: var(--ui-hover); border-color: var(--ui-hover); color: var(--ui-on-solid); box-shadow: none; transform: none; }
+:root:root :is(.btn-secondary, .btn-danger, .btn-edit, .btn-edit-small, .btn-delete-small, .btn-ticket-small, .btn-generate-tickets, .btn-export, .btn-download, .btn-download-audio, .btn-delete, .btn-share, .btn-retry, .btn-load-audio, .api-key-warning-btn-dismiss, .notification-action, .btn-manor-login, .btn-google-login, .btn-fill-defaults) {
+  color: var(--ui-text); background: var(--ui-surface); border-color: var(--ui-line); box-shadow: none; border-radius: 6px; font-weight: 500; transform: none;
+}
+:root:root :is(.btn-secondary, .btn-danger, .btn-edit, .btn-edit-small, .btn-delete-small, .btn-ticket-small, .btn-generate-tickets, .btn-export, .btn-download, .btn-download-audio, .btn-delete, .btn-share, .btn-retry, .btn-load-audio, .api-key-warning-btn-dismiss, .notification-action, .btn-manor-login, .btn-google-login, .btn-fill-defaults):hover:not(:disabled) { color: var(--ui-text); background: var(--ui-soft); border-color: var(--ui-muted); box-shadow: none; transform: none; }
+:root:root :is(.btn-close, .settings-close-btn, .usage-close-btn, .toggle-visibility, .file-remove, .notification-close) { color: var(--ui-muted); background: transparent; }
+:root:root :is(.btn-close, .settings-close-btn, .usage-close-btn, .toggle-visibility, .file-remove, .notification-close):hover { background: var(--ui-soft); color: var(--ui-text); }
+:root:root :is(.settings-message.success, .settings-message.error, .settings-info-card, .key-badge, .delete-confirm-box, .api-key-warning, .error-message, .login-error, .usage-error, .default-credentials) { color: var(--ui-text); background: var(--ui-soft); border-color: var(--ui-line); box-shadow: none; }
+:root:root :is(.settings-info-card p, .settings-info-card strong, .key-badge, .settings-message span) { color: var(--ui-text); }
+
+/* Recording remains the primary action; secondary settings stay quiet. */
+:root:root .recorder-card { border-radius: 12px; border: 1px solid var(--ui-line); }
+:root:root .quiet-recorder .recorder-card { border: 0; border-radius: 0; background: transparent; }
+:root:root .recorder-tabs { border-color: var(--ui-line); }
+:root:root .recorder-tab { color: var(--ui-muted); font-weight: 500; }
+:root:root .recorder-tab:hover { background: var(--ui-soft); color: var(--ui-text); }
+:root:root .recorder-tab.active { color: var(--ui-text); }
+:root:root .recorder-tab.active::after { background: var(--ui-text); }
+:root:root :is(.hero-icon, .hero-icon-upload, .upload-icon-circle, .file-icon-box) { background: var(--ui-soft); color: var(--ui-text); border-color: var(--ui-line); }
+:root:root :is(.recorder-toggle, .checkbox-label) { background: transparent; border-color: var(--ui-line); border-radius: 6px; }
+:root:root .checkbox-label:hover { background: var(--ui-soft); border-color: var(--ui-line); }
+:root:root .upload-dropzone { background: var(--ui-surface); border-color: var(--ui-line); border-radius: 8px; }
+:root:root .upload-dropzone:is(:hover, .drag-over, .has-file) { background: var(--ui-soft); border-color: var(--ui-muted); }
+:root:root .recording-label { color: var(--ui-muted); }
+:root:root .visualizer-core { background: var(--ui-solid); color: var(--ui-on-solid); box-shadow: none; }
+:root:root .visualizer-ring { border-color: var(--ui-line); }
+:root:root :is(.pulse-dot, .live-dot) { background: var(--ui-text); }
+:root:root .live-panel-segment { border-color: var(--ui-line); }
+:root:root .live-panel-text { color: var(--ui-text); }
+:root:root .live-panel-text.typing::after { background: var(--ui-text); }
+:root:root :is(.live-panel-time, .live-panel-status) { color: var(--ui-muted); }
+
+/* A document stays a document: no colored boxes inside the reader. */
+:root:root .detail-section { background: transparent; border-color: var(--ui-line); border-radius: 0; }
+:root:root .detail-header-meta span { color: var(--ui-muted); }
+:root:root .detail-header-meta svg { color: var(--ui-muted); }
+:root:root :is(.summary-content, .token-cost-info, .cost-item, .cost-item strong, .cost-total, .key-points-list li, .transcript-text, .transcript-content) { color: var(--ui-text); }
+:root:root :is(.cost-item, .cost-total) { border-color: var(--ui-line); background: transparent; }
+:root:root .total-cost { color: var(--ui-text); }
+:root:root .summary-content.markdown-body :is(h1, h2, h3, h4, h5, h6, strong) { color: var(--ui-text); border-color: var(--ui-line); }
+:root:root .summary-content.markdown-body :is(p, li, em) { color: var(--ui-text); }
+:root:root .summary-content.markdown-body :is(code, pre) { color: var(--ui-text); background: var(--ui-soft); border-color: var(--ui-line); }
+:root:root .summary-content.markdown-body :is(a, blockquote) { color: var(--ui-text); border-color: var(--ui-line); }
+:root:root .key-points-list li::before { color: var(--ui-muted); }
+:root:root :is(.action-item-card, .action-item-card:hover) { background: var(--ui-surface); border-color: var(--ui-line); box-shadow: none; }
+:root:root :is(.action-icon, .action-icon svg, .action-edit-label, .transcript-summary, .transcript-summary:hover) { color: var(--ui-muted); }
+:root:root .transcript-summary { background: var(--ui-soft); }
+:root:root :is(.speaker-segment, .speaker-segment.speaker-0, .speaker-segment.speaker-1, .speaker-segment.speaker-2, .speaker-segment.speaker-3) { background: var(--ui-soft); border-color: var(--ui-line); color: var(--ui-text); }
+:root:root .quiet-meeting-detail .chat-msg-user { background: var(--ui-soft); border: 0; color: var(--ui-text); }
+:root:root .quiet-meeting-detail .chat-msg-assistant { background: transparent; border: 0; color: var(--ui-text); }
+:root:root :is(.speaker-label, .chat-role, .chat-empty, .chat-message-content) { color: var(--ui-text); }
+:root:root :is(.ticket-badge, .status-badge, .action-status, .completed-label) { background: var(--ui-soft); color: var(--ui-text); border-color: var(--ui-line); }
+
+/* Account surfaces share the same neutral language. */
+:root:root .user-profile-dropdown { border-radius: 9px; box-shadow: 0 10px 32px #0000000b; }
+:root:root .profile-header { padding: 20px; border-color: var(--ui-line); }
+:root:root .profile-name { font-weight: 600; }
+:root:root .profile-divider { background: var(--ui-line); }
+:root:root :is(.profile-menu-item, .profile-logout-btn, .menu-icon-svg) { color: var(--ui-text); }
+:root:root :is(.profile-menu-item, .profile-logout-btn):hover { background: var(--ui-soft); color: var(--ui-text); }
+:root:root :is(.profile-menu-item, .profile-logout-btn):hover .menu-icon-svg { color: var(--ui-text); }
+:root:root .profile-avatar-large { background: var(--ui-soft); color: var(--ui-text); box-shadow: none; }
+:root:root .usage-content { border: 1px solid var(--ui-line); border-radius: 12px; max-width: 560px; }
+:root:root .usage-header { border-color: var(--ui-line); }
+:root:root .usage-card { background: transparent; border: 0; padding: 18px 10px; box-shadow: none; }
+:root:root .usage-card-value { font-size: 28px; font-weight: 500; }
+:root:root .usage-card-icon { display: none; }
+:root:root .usage-section-title { font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+:root:root .usage-bar-container { background: var(--ui-soft); }
+:root:root .usage-bar { background: var(--ui-muted); }
+:root:root .usage-breakdown { margin: 18px 0; color: var(--ui-muted); border-top: 1px solid var(--ui-line); border-bottom: 1px solid var(--ui-line); padding: 16px 0; font-size: 12px; }
+:root:root .usage-breakdown summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+:root:root .usage-breakdown .usage-grid { margin: 12px 0 0; }
+:root:root .usage-activity { color: var(--ui-muted); border-bottom: 1px solid var(--ui-line); }
+:root:root .usage-activity > summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; cursor: pointer; font-size: 12px; list-style: none; }
+:root:root .usage-activity > summary::-webkit-details-marker { display: none; }
+:root:root .usage-activity > summary span { font-size: 11px; }
+:root:root .usage-activity .usage-daily { padding: 8px 0 18px; }
+:root:root .login-container { background: var(--ui-bg); }
+:root:root .login-card { border: 1px solid var(--ui-line); border-radius: 12px; padding: 40px; max-width: 420px; backdrop-filter: none; }
+:root:root .login-logo { filter: grayscale(1); }
+:root:root .login-header { margin-bottom: 30px; }
+:root:root .login-divider::before, :root:root .login-divider::after { background: var(--ui-line); }
+:root:root .login-toggle, :root:root .login-divider { color: var(--ui-muted); }
+:root:root .btn-toggle-mode { color: var(--ui-text); }
+:root:root .google-icon { filter: grayscale(1); }
+:root:root .manor-login-logo { filter: grayscale(1); }
+:root:root .login-footer { color: var(--ui-muted); }
+:root:root .callback-spinner, :root:root .loading-spinner, :root:root .shared-spinner { border-color: var(--ui-line); border-top-color: var(--ui-text); }
+:root:root .loading-container p { color: var(--ui-muted); }
+:root:root .notification { color: var(--ui-text); background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: 8px; box-shadow: 0 4px 28px #0000000a; }
+:root:root .notification-message, :root:root .notification-icon { color: var(--ui-text); }
+:root:root .notification-content { border: 0; }
+:root:root :is(.notification-success, .notification-error, .notification-info) { border-left-color: var(--ui-line); }
+:root:root .shared-meeting-page { background: var(--ui-bg); color: var(--ui-text); font-family: var(--font); }
+:root:root .shared-header { border-color: var(--ui-line); }
+:root:root :is(.shared-header h1, .shared-error h2, .shared-section h2, .shared-summary, .shared-action-task, .shared-summary h1, .shared-summary h2, .shared-summary h3) { color: var(--ui-text); }
+:root:root .shared-section { background: var(--ui-surface); border-color: var(--ui-line); box-shadow: none; }
+:root:root :is(.shared-key-points li, .shared-action-meta, .shared-transcript) { color: var(--ui-text); border-color: var(--ui-line); }
+:root:root :is(.shared-key-points li::before, .shared-footer p, .shared-brand-link) { color: var(--ui-muted); }
+:root:root .shared-action-item { border-color: var(--ui-line); }
+:root:root .shared-summary code { background: var(--ui-soft); }
+:root:root .quiet-shared-meeting .shared-transcript { background: transparent; }
+:root:root ::-webkit-scrollbar-thumb { background: var(--border-medium); }
+@media (max-width: 640px) {
+  :root .app-minimal > .app-main-list, :root .app-minimal > .app-main-recorder { padding-top: 24px; }
+  :root .app-minimal > .app-header { padding: 0 16px; }
+  :root:root .login-card { margin: 16px; padding: 28px 24px; }
+}
+@media (max-width: 420px) {
+  :root .app-minimal .app-header .app-brand-icon { width: 22px; height: 22px; }
+  :root .app-minimal .app-header .app-wordmark { font-size: 14px; }
+}
+@media (max-width: 359px) {
+  :root .app-minimal .app-header .app-brand-icon { width: 18px; height: 18px; }
+  :root .app-minimal .app-header .app-wordmark { font-size: 12px; }
+}
+:root:root .meeting-list {
+  --meeting-ink: var(--ui-text); --meeting-secondary: var(--ui-muted); --meeting-muted: var(--ui-muted);
+  --meeting-line: var(--ui-line); --meeting-surface: var(--ui-surface); --meeting-hover: var(--ui-soft);
+  --meeting-accent: var(--ui-solid); --meeting-accent-bg: var(--ui-soft);
+  --meeting-warning: var(--ui-muted); --meeting-warning-bg: var(--ui-soft); --meeting-error: var(--ui-text);
+}
+:root:root .meeting-list .meetings-new-button { color: var(--ui-on-solid); }
+:root:root .meeting-list .meetings-new-button:hover { background: var(--ui-hover); }
+:root:root .login-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ui-text); font-size: 20px; font-weight: 600; letter-spacing: -.6px; }
+:root:root .login-brand .app-brand-icon { width: 28px; height: 28px; }
+:root:root .login-brand span { color: var(--ui-text); }
+:root:root .login-card .btn-manor-login { background: var(--ui-solid); color: var(--ui-on-solid); border-color: var(--ui-solid); }
+:root:root .login-card .btn-manor-login:hover { background: var(--ui-hover); }
+:root:root .login-card .btn-manor-login .manor-login-logo { filter: brightness(0) invert(1); }
+:root[data-theme="dark"] .login-card .btn-manor-login .manor-login-logo { filter: brightness(0); }
+:root:root .login-email-option { margin-top: 24px; border-top: 1px solid var(--ui-line); padding-top: 20px; }
+:root:root .login-email-option > summary { cursor: pointer; font-size: 12px; color: var(--ui-muted); text-align: center; list-style: none; }
+:root:root .login-email-option > summary::-webkit-details-marker { display: none; }
+:root:root .login-email-option .login-form { margin-top: 24px; }
+:root:root .usage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:root:root .meeting-list .search-input { color: var(--ui-text); background: transparent; }
