@@ -1,0 +1,230 @@
+.app.app-minimal {
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font);
+  --shell-background: #fafbf9;
+  --shell-surface: #ffffff;
+  --shell-text: #252b27;
+  --shell-muted: #747c76;
+  --shell-line: #e8ece7;
+  --shell-hover: #f0f3ee;
+  --shell-avatar: #e9ede7;
+  background: var(--shell-background);
+}
+
+.app-minimal > .app-header {
+  min-height: 72px;
+  padding: 0 40px;
+  gap: 24px;
+  background: var(--shell-surface);
+  border-bottom: 1px solid var(--shell-line);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.app-minimal > .app-header > .header-left {
+  flex: 0 0 auto;
+  gap: 0;
+}
+
+.app-minimal .app-header h1 { gap: 8px; }
+.app-minimal .app-header .app-brand-icon { width: 26px; height: 26px; }
+.app-minimal .app-header .app-wordmark { color: var(--shell-text); font-size: 16px; font-weight: 700; letter-spacing: -.6px; }
+
+.app-minimal .app-header .header-right {
+  gap: 20px;
+  min-width: 0;
+}
+
+.app-minimal .app-header .nav-tabs {
+  gap: 6px;
+}
+
+.app-minimal .app-header .nav-tabs button {
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--shell-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: none;
+  transform: none;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.app-minimal .app-header .nav-tabs button:hover,
+.app-minimal .app-header .nav-tabs button.active,
+.app-minimal .app-header .nav-tabs button.active:hover {
+  background: var(--shell-hover);
+  border-color: transparent;
+  color: var(--shell-text);
+  box-shadow: none;
+  transform: none;
+}
+
+.app-minimal .app-header .nav-tabs button.active {
+  font-weight: 600;
+}
+
+.app-minimal .app-header .theme-toggle-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--shell-muted);
+}
+
+.app-minimal .app-header .theme-toggle-btn:hover {
+  background: var(--shell-hover);
+  color: var(--shell-text);
+}
+
+.app-minimal .app-header .user-profile-trigger,
+.app-minimal .app-header .user-profile-trigger:hover {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  gap: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.app-minimal .app-header .user-profile-trigger .user-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--shell-avatar);
+  color: var(--shell-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.app-minimal .app-header .user-info-inline,
+.app-minimal .app-header .user-profile-trigger .profile-arrow {
+  display: none;
+}
+
+.app-minimal .app-header .nav-tabs button:focus-visible,
+.app-minimal .app-header .theme-toggle-btn:focus-visible,
+.app-minimal .app-header .user-profile-trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.app-minimal > .app-main-list {
+  max-width: 1120px;
+  width: calc(100% - 64px);
+  padding: 64px 0 56px;
+}
+
+.app-minimal > .app-footer {
+  padding: 24px 24px 28px;
+  background: transparent;
+  border: 0;
+  backdrop-filter: none;
+}
+
+.app-minimal .app-footer .powered-by,
+.app-minimal .app-footer .manor-ai-brand {
+  color: var(--shell-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+[data-theme="dark"] .app.app-minimal {
+  --shell-background: #151916;
+  --shell-surface: #1b201c;
+  --shell-text: #e8ece7;
+  --shell-muted: #a1aaa2;
+  --shell-line: #2c332d;
+  --shell-hover: #29312a;
+  --shell-avatar: #343e35;
+}
+
+@media (max-width: 640px) {
+  .app-minimal > .app-header {
+    padding: 0 24px;
+    gap: 16px;
+  }
+
+  .app-minimal .app-header .header-right {
+    gap: 8px;
+  }
+
+  .app-minimal .app-header .nav-tabs {
+    gap: 2px;
+  }
+
+  .app-minimal .app-header .nav-tabs button {
+    padding: 8px 9px;
+    font-size: 12px;
+  }
+
+  .app-minimal .app-header .user-profile-dropdown {
+    right: 0;
+    min-width: 260px;
+    max-width: calc(100vw - 48px);
+  }
+
+  .app-minimal > .app-main-list {
+    width: calc(100% - 48px);
+    padding: 24px 0 40px;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-minimal > .app-header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .app-minimal .app-header h1 { gap: 6px; }
+  .app-minimal .app-header .app-brand-icon { width: 22px; height: 22px; }
+  .app-minimal .app-header .app-wordmark { font-size: 14px; }
+
+  .app-minimal .app-header .header-right {
+    gap: 4px;
+  }
+
+  .app-minimal .app-header .nav-tabs {
+    gap: 0;
+  }
+
+  .app-minimal .app-header .nav-tabs button {
+    min-height: 36px;
+    padding: 8px 7px;
+    font-size: 11px;
+  }
+
+  .app-minimal .app-header .theme-toggle-btn,
+  .app-minimal .app-header .user-profile-trigger,
+  .app-minimal .app-header .user-profile-trigger .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .app-minimal .app-header .user-profile-dropdown {
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-minimal .app-header .nav-tabs button,
+  .app-minimal .app-header .theme-toggle-btn,
+  .app-minimal .app-header .user-profile-trigger {
+    transition: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .app-minimal .app-header h1 { gap: 5px; }
+  .app-minimal .app-header .app-brand-icon { width: 18px; height: 18px; }
+  .app-minimal .app-header .app-wordmark { font-size: 12px; }
+}

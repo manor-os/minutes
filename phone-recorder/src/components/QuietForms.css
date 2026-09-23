@@ -1,0 +1,521 @@
+.quiet-recorder.recorder {
+  padding: 28px 16px;
+}
+
+.quiet-recorder.recorder .recorder-card {
+  max-width: 460px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.quiet-recorder.recorder .recorder-tabs {
+  border-color: var(--ui-line);
+}
+
+.quiet-recorder.recorder .recorder-tab {
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.quiet-recorder.recorder .recorder-tab:hover,
+.quiet-recorder.recorder .recorder-tab.active {
+  color: var(--ui-text);
+  background: transparent;
+}
+
+.quiet-recorder.recorder .recorder-tab.active::after {
+  background: var(--ui-solid);
+  left: 24%;
+  right: 24%;
+}
+
+.quiet-recorder.recorder .recorder-body {
+  padding: 26px 0 0;
+  gap: 18px;
+}
+
+.quiet-recorder.recorder .recorder-hero {
+  align-self: stretch;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.quiet-recorder.recorder .recorder-hero h2 {
+  color: var(--ui-text);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -.5px;
+}
+
+.quiet-recorder.recorder .recorder-form {
+  gap: 16px;
+}
+
+.quiet-recorder.recorder .recorder-input,
+.quiet-recorder.recorder .recorder-select,
+.quiet-recorder.recorder .recorder-textarea {
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-line);
+  border-radius: 6px;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.quiet-recorder.recorder .recorder-input::placeholder,
+.quiet-recorder.recorder .recorder-textarea::placeholder {
+  color: var(--ui-muted);
+}
+
+.quiet-recorder.recorder .recorder-input:focus,
+.quiet-recorder.recorder .recorder-select:focus,
+.quiet-recorder.recorder .recorder-textarea:focus {
+  border-color: var(--ui-text);
+  box-shadow: none;
+}
+
+.quiet-recorder.recorder .recorder-select {
+  appearance: auto;
+  background-image: none;
+}
+
+.quiet-recorder.recorder .recorder-toggle {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  align-items: flex-start;
+}
+
+.quiet-recorder.recorder .recorder-toggle input {
+  margin-top: 2px;
+  accent-color: var(--ui-solid);
+}
+
+.quiet-recorder.recorder .recorder-toggle-title {
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.quiet-recorder.recorder .recorder-toggle-hint {
+  margin-top: 4px;
+  color: var(--ui-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.quiet-disclosure {
+  width: 100%;
+  color: var(--ui-text);
+}
+
+.quiet-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.quiet-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.quiet-disclosure > summary::after {
+  content: '+';
+  color: var(--ui-muted);
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+.quiet-disclosure[open] > summary::after {
+  content: '−';
+}
+
+.quiet-disclosure > summary:hover,
+.quiet-disclosure[open] > summary {
+  color: var(--ui-text);
+}
+
+.quiet-disclosure > summary:focus-visible {
+  outline: 1px solid var(--ui-text);
+  outline-offset: 3px;
+}
+
+.quiet-disclosure-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 0 4px;
+}
+
+.quiet-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+.quiet-recorder.recorder .recording-options {
+  border-top: 1px solid var(--ui-line);
+  margin-bottom: -8px;
+}
+
+.quiet-recorder.recorder .btn-record,
+.quiet-recorder.recorder .btn-record:hover {
+  background: var(--ui-solid);
+  color: var(--ui-on-solid);
+  border: 1px solid var(--ui-solid);
+  border-radius: 6px;
+  box-shadow: none;
+  transform: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.quiet-recorder.recorder .btn-record:hover {
+  opacity: .88;
+}
+
+.quiet-recorder.recorder .upload-dropzone,
+.quiet-recorder.recorder .upload-dropzone:hover,
+.quiet-recorder.recorder .upload-dropzone.drag-over {
+  border-color: var(--ui-line);
+  background: var(--ui-soft);
+  border-radius: 8px;
+}
+
+.quiet-recorder.recorder .upload-dropzone:focus-visible {
+  outline: 2px solid var(--ui-text);
+  outline-offset: 3px;
+}
+
+.quiet-recorder.recorder .upload-dropzone.drag-over {
+  border-color: var(--ui-text);
+}
+
+.quiet-recorder.recorder .upload-cta,
+.quiet-recorder.recorder .file-name {
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.quiet-recorder.recorder .upload-formats,
+.quiet-recorder.recorder .file-size {
+  color: var(--ui-muted);
+  font-size: 11px;
+}
+
+.quiet-recorder.recorder .file-icon-box,
+.quiet-recorder.recorder .file-remove,
+.quiet-recorder.recorder .file-remove:hover {
+  color: var(--ui-text);
+  background: var(--ui-soft);
+}
+
+.quiet-recorder.recorder .recording-visualizer {
+  width: 64px;
+  height: 64px;
+}
+
+.quiet-recorder.recorder .visualizer-ring {
+  display: none;
+}
+
+.quiet-recorder.recorder .visualizer-core {
+  color: var(--ui-text);
+  background: var(--ui-soft);
+  box-shadow: none;
+}
+
+.quiet-recorder.recorder .recording-time {
+  color: var(--ui-text);
+}
+
+.quiet-recorder.recorder .recording-label {
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+.quiet-recorder.recorder .pulse-dot,
+.quiet-recorder.recorder .live-dot {
+  background: var(--ui-solid);
+}
+
+.quiet-recorder.recorder .live-panel {
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: none;
+}
+
+.quiet-recorder.recorder .live-panel-header {
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+}
+
+.quiet-recorder.recorder .live-panel-header h3,
+.quiet-recorder.recorder .live-panel-text {
+  color: var(--ui-text);
+}
+
+.quiet-recorder.recorder .live-panel-time,
+.quiet-recorder.recorder .live-panel-empty,
+.quiet-recorder.recorder .live-panel-status {
+  color: var(--ui-muted);
+}
+
+.quiet-recorder.recorder .api-key-warning {
+  border-color: var(--ui-line);
+  background: var(--ui-soft);
+  color: var(--ui-text);
+}
+
+.quiet-recorder.recorder .api-key-warning-text {
+  color: var(--ui-text);
+}
+
+.quiet-recorder.recorder .api-key-warning-btn-settings {
+  border-color: var(--ui-solid);
+  background: var(--ui-solid);
+  color: var(--ui-on-solid);
+}
+
+.quiet-recorder.recorder .api-key-warning-btn-dismiss {
+  border-color: var(--ui-line);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+
+.quiet-settings.settings-modal {
+  background: color-mix(in srgb, var(--ui-text) 30%, transparent);
+  backdrop-filter: none;
+}
+
+.quiet-settings.settings-modal .settings-content {
+  max-width: 480px;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: none;
+}
+
+.quiet-settings.settings-modal .settings-header,
+.quiet-settings.settings-modal .settings-actions {
+  padding: 16px 22px;
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+}
+
+.quiet-settings.settings-modal .settings-header h2 {
+  color: var(--ui-text);
+  font-weight: 500;
+}
+
+.quiet-settings.settings-modal .settings-body {
+  padding: 20px 22px;
+}
+
+.quiet-settings.settings-modal .settings-section {
+  margin-bottom: 16px;
+}
+
+.quiet-settings.settings-modal .settings-form {
+  gap: 14px;
+}
+
+.quiet-settings.settings-modal .quiet-disclosure {
+  border-top: 1px solid var(--ui-line);
+  margin: 0;
+}
+
+.quiet-settings.settings-modal .quiet-disclosure > summary {
+  padding: 15px 0;
+}
+
+.quiet-settings.settings-modal .quiet-disclosure > .settings-form {
+  padding: 4px 0 20px;
+}
+
+.quiet-settings.settings-modal .form-group label,
+.quiet-settings.settings-modal .checkbox-text strong {
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.quiet-settings.settings-modal .form-group input,
+.quiet-settings.settings-modal .form-group select {
+  border-color: var(--ui-line);
+  border-radius: 6px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.quiet-settings.settings-modal .form-group input:focus,
+.quiet-settings.settings-modal .form-group select:focus {
+  border-color: var(--ui-text);
+}
+
+.quiet-settings.settings-modal .form-group input:disabled {
+  background: var(--ui-soft);
+}
+
+.quiet-settings.settings-modal .form-group input::placeholder {
+  color: var(--ui-muted);
+}
+
+.quiet-settings.settings-modal input[type='checkbox'] {
+  accent-color: var(--ui-solid);
+}
+
+.quiet-settings.settings-modal .form-help,
+.quiet-settings.settings-modal .settings-section-desc,
+.quiet-settings.settings-modal .checkbox-description,
+.quiet-settings.settings-modal .quiet-managed-note {
+  color: var(--ui-muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.quiet-settings.settings-modal .quiet-managed-note {
+  margin: 12px 0 2px;
+}
+
+.quiet-settings.settings-modal .settings-info-card,
+.quiet-settings.settings-modal .delete-confirm-box,
+.quiet-settings.settings-modal .settings-message,
+.quiet-settings.settings-modal .key-badge {
+  color: var(--ui-text);
+  background: var(--ui-soft);
+  border: 1px solid var(--ui-line);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.quiet-settings.settings-modal .settings-info-card strong,
+.quiet-settings.settings-modal .settings-info-card p {
+  color: var(--ui-text);
+}
+
+.quiet-settings.settings-modal .btn-primary,
+.quiet-settings.settings-modal .btn-primary:hover,
+.quiet-settings.settings-modal .btn-danger,
+.quiet-settings.settings-modal .btn-danger:hover {
+  color: var(--ui-on-solid);
+  background: var(--ui-solid);
+  border: 1px solid var(--ui-solid);
+  border-radius: 6px;
+  box-shadow: none;
+  transform: none;
+}
+
+.quiet-settings.settings-modal .btn-secondary,
+.quiet-settings.settings-modal .btn-secondary:hover,
+.quiet-settings.settings-modal .toggle-visibility,
+.quiet-settings.settings-modal .settings-close-btn {
+  color: var(--ui-text);
+  background: transparent;
+  border-color: var(--ui-line);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.quiet-settings.settings-modal .settings-actions .btn-secondary {
+  border-color: transparent;
+}
+
+.quiet-settings.settings-modal .toggle-visibility {
+  width: auto;
+  min-width: 42px;
+  font-size: 11px;
+}
+
+.quiet-profile.user-profile-container .user-profile-dropdown {
+  min-width: 220px;
+  border: 1px solid var(--ui-line);
+  border-radius: 9px;
+  background: var(--ui-surface);
+  box-shadow: none;
+}
+
+.quiet-profile.user-profile-container .profile-header {
+  padding: 18px;
+}
+
+.quiet-profile.user-profile-container .profile-name {
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.quiet-profile.user-profile-container .profile-email {
+  color: var(--ui-muted);
+  font-size: 11px;
+}
+
+.quiet-profile.user-profile-container .profile-divider {
+  background: var(--ui-line);
+}
+
+.quiet-profile.user-profile-container .profile-menu-item,
+.quiet-profile.user-profile-container .profile-logout-btn {
+  padding: 10px 18px;
+  color: var(--ui-text);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.quiet-profile.user-profile-container .profile-menu-item:hover,
+.quiet-profile.user-profile-container .profile-logout-btn:hover {
+  color: var(--ui-text);
+  background: var(--ui-soft);
+}
+
+@media (max-width: 480px) {
+  .quiet-recorder.recorder {
+    padding: 20px 0;
+  }
+
+  .quiet-recorder.recorder .recorder-body {
+    padding: 24px 20px;
+  }
+
+  .quiet-recorder.recorder .recorder-input,
+  .quiet-recorder.recorder .recorder-select,
+  .quiet-recorder.recorder .recorder-textarea,
+  .quiet-settings.settings-modal .form-group input,
+  .quiet-settings.settings-modal .form-group select {
+    font-size: 16px;
+  }
+
+  .quiet-settings.settings-modal {
+    padding: 12px;
+  }
+
+  .quiet-settings.settings-modal .settings-content {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .quiet-settings.settings-modal .settings-header,
+  .quiet-settings.settings-modal .settings-body,
+  .quiet-settings.settings-modal .settings-actions {
+    padding: 18px;
+  }
+}

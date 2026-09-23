@@ -1,0 +1,40 @@
+# Fully local mode — no API keys needed
+# Usage: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: meeting-note-ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=60m
+      - OLLAMA_NUM_PARALLEL=1
+      - OLLAMA_MAX_QUEUE=10
+      - OLLAMA_REQUEST_TIMEOUT=600
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - meeting-network
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+
+  backend:
+    environment:
+      - STT_MODE=local
+      - LLM_MODE=local
+      - WHISPER_MODEL_SIZE=base
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:1.5b
+
+  celery-worker:
+    environment:
+      - STT_MODE=local
+      - LLM_MODE=local
+      - WHISPER_MODEL_SIZE=base
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:1.5b
+
+volumes:
+  ollama_data:

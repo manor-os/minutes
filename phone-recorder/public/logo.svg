@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36" width="160" height="36">
+  <g transform="translate(2 2) scale(.5)">
+    <path fill="#18181b" d="M8 20.5 31.5 8V36.5L15 45.5 21.5 56 8 49Z M34.5 23.5 56 12V39.5L41.5 47.5 47 56 34.5 49Z"/>
+  </g>
+  <text x="38" y="24" font-family="Inter, ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#18181b" letter-spacing="-.6">Minutes</text>
+</svg>
