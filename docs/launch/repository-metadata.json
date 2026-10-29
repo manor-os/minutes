@@ -1,0 +1,22 @@
+{
+  "name": "Minutes",
+  "description": "Open-source meeting notes: record, transcribe, summarize, and ask questions. Self-host with local models or your own API keys. Hosted app by Manor AI.",
+  "homepage": "https://minutes.manorai.xyz/",
+  "topics": [
+    "meeting-notes",
+    "transcription",
+    "speech-to-text",
+    "ai",
+    "self-hosted",
+    "open-source",
+    "whisper",
+    "ollama",
+    "fastapi",
+    "react",
+    "docker",
+    "manor-ai"
+  ],
+  "social_preview": "docs/launch/assets/github-social-preview.png",
+  "license": "MIT",
+  "status": "Prepared values; repository settings have not been changed."
+}

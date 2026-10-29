@@ -1,0 +1,29 @@
+{
+  "id": "launch-demo",
+  "title": "Website launch · Weekly check-in",
+  "status": "completed",
+  "created_at": "2026-10-27T17:00:00Z",
+  "duration": 1440,
+  "platform": "phone_recorder",
+  "summary": "The team will launch the new website on Friday. The homepage is ready; the remaining work is a pricing review, a final mobile check, and a short customer announcement.\n\n### Decisions\n- Keep the first release focused on the core product.\n- Publish after the mobile review is complete.\n- Review early feedback together on Monday.",
+  "transcript": "Alex: Let’s launch the new website on Friday. The homepage is ready.\nJamie: I’ll finish the pricing review by Thursday.\nMorgan: I’ll check the mobile experience before we publish.\nAlex: Great. I’ll prepare a short customer announcement. We’ll review early feedback on Monday.",
+  "key_points": [
+    "Launch on Friday after the mobile review.",
+    "Keep the first release focused on the core product.",
+    "Review customer feedback together on Monday."
+  ],
+  "action_items": [
+    {
+      "task": "Finish the pricing review before launch.",
+      "assignee": "Jamie",
+      "due_date": "2026-10-29",
+      "completed": false
+    },
+    {
+      "task": "Check the mobile experience before publishing.",
+      "assignee": "Morgan",
+      "due_date": "2026-10-30",
+      "completed": false
+    }
+  ]
+}
