@@ -1,164 +1,111 @@
 <p align="center">
-  <img src="phone-recorder/public/logo.svg" height="48" alt="Minutes" />
-</p>
-
-<h3 align="center">AI Meeting Notes — Open Source, Self-Hosted, Privacy-First</h3>
-
-<p align="center">
-  Record meetings, get transcripts, AI summaries, and action items.<br/>
-  Run 100% locally with no API keys, or use cloud AI for better accuracy.
+  <img src="docs/launch/assets/github-social-preview.png" width="100%" alt="Minutes — Meetings in. Next steps out. Open-source meeting notes by Manor AI." />
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> · <a href="#features">Features</a> · <a href="#screenshots">Screenshots</a> · <a href="ROADMAP.md">Roadmap</a> · <a href="CONTRIBUTING.md">Contributing</a>
+  <a href="https://minutes.manorai.xyz/">Try Minutes online</a> ·
+  <a href="#self-host">Self-host</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a> ·
+  <a href="README.zh-CN.md">简体中文</a>
 </p>
 
----
+Minutes turns recordings into transcripts, summaries, and action items. Ask questions about a meeting, find a past decision, or share the notes. Built for founders and small teams who want less work after a call.
 
-## Quick Start
+Use the [hosted app](https://minutes.manorai.xyz/) with your Manor account, or run the MIT-licensed Community edition on your own machine.
 
-```bash
-npx create-manor-minutes
-```
+## From conversation to next steps
 
-Choose **Local** (no API keys, runs Whisper + Ollama on your machine) or **Cloud API** (OpenAI/OpenRouter).
+- **Record or upload.** Capture your microphone, include meeting-tab audio where the browser supports it, or upload an existing recording.
+- **Read the essentials.** Get a transcript, summary, key points, and action items with suggested owners and deadlines. Review generated notes before acting on them.
+- **Ask your meeting.** Ask follow-up questions using the transcript as context.
+- **Keep it organized.** Search transcripts, rename meetings, add tags and favorites, and filter your library.
+- **Share or export.** Create a read-only share link, download audio or text, or save a PDF through the browser's print dialog.
+- **Choose your AI setup.** Use your own API keys, or run transcription and note generation locally with faster-whisper and Ollama.
 
-Or with Docker:
+### A look inside
+
+![A meeting summary in the Community edition](docs/launch/assets/community-summary.png)
+
+<details>
+<summary>Action items and meeting chat</summary>
+
+![Action items in the Community edition](docs/launch/assets/community-actions.png)
+
+![Meeting chat in the Community edition](docs/launch/assets/community-ask.png)
+
+</details>
+
+Screenshots show the Community UI with fictional meeting content and simulated AI responses. See [asset provenance](docs/launch/ASSETS.md).
+
+## Online or self-hosted?
+
+| | Hosted Minutes | Community edition in this repository |
+|---|---|---|
+| Start | [Open the app](https://minutes.manorai.xyz/) | Run Docker Compose |
+| Account | Manor account | Local email and password |
+| Transcripts, notes, actions, Ask | Included | Included |
+| AI processing | Managed service, subject to account credits | Your API provider, or local models |
+| Choose the output language for notes and actions | 43 choices | Hosted language selector not yet included |
+| Create tasks inside Manor from Minutes | Available with Manor access | Hosted task integration not included |
+| Manor MCP connection | Hosted integration | Cloud MCP server not included |
+| Data storage | Managed by the hosted service | Your deployment |
+
+Hosted Minutes and this repository ship separately. Browser support and model quality vary; installing Community does not include a Manor subscription or cloud credits. The self-hosted source is MIT licensed; hardware, hosting, and API usage may have their own costs.
+
+## Self-host
+
+These steps are for a development machine. You need Git, Docker, and Docker Compose v2.24 or newer. The supplied stack publishes database and storage ports and uses development defaults; see [deployment notes](docs/SELF_HOSTING.md#before-exposing-a-deployment) before putting it on a network.
 
 ```bash
 git clone https://github.com/manor-os/minutes.git
 cd minutes
-docker compose up -d                          # cloud API mode (set keys in Settings)
-# or
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d   # fully local
+cp .env.community.example .env
 ```
 
-Open **http://localhost:9002** → Register → Start recording.
-
-### Management
+Edit `.env`: set a random `JWT_SECRET` and your own `ADMIN_EMAIL` / `ADMIN_PASSWORD`. API keys can be added in the app's Settings after sign-in; leave the optional server-wide keys unset if each user will bring their own.
 
 ```bash
-./minutes start       # Start all services
-./minutes stop        # Stop
-./minutes logs        # View logs
-./minutes health      # Check all services
-./minutes update      # Pull latest & restart
-./minutes backup      # Backup database
-./minutes help        # All commands
+docker compose -f docker-compose.yml -f docker-compose.community.yml up -d --build
 ```
 
-## Screenshots
+Open **http://localhost:9002**, sign in with the admin credentials you set (or register a separate account), then add your transcription and language-model credentials in **Settings**. Record a short test or upload a file to check the complete flow.
 
-<p align="center">
-  <img src="docs/screenshots/recorder.png" width="400" alt="Record meetings with live transcription" />
-  <img src="docs/screenshots/meeting_processing.png" width="400" alt="Meeting processing with AI" />
-</p>
-<p align="center">
-  <img src="docs/screenshots/meeting_success.png" width="400" alt="Completed meeting with summary" />
-  <img src="docs/screenshots/meeting_summary.png" width="400" alt="AI summary, key points, and action items" />
-</p>
+### Use local models
 
-## Features
-
-### Recording & Transcription
-- **Live recording** with real-time transcript (word-by-word streaming)
-- **Meeting audio capture** — records your mic *and* other participants by mixing in tab/system audio (share the meeting tab with "Share audio" enabled)
-- **Upload audio** — drag-and-drop MP3, WAV, M4A, WebM, OGG, FLAC, MP4
-- **Speaker diarization** — identifies who said what
-- **20+ languages** supported for transcription
-- **Local STT** — faster-whisper runs on your machine, no API needed
-
-### AI-Powered Analysis
-- **Meeting summary** — concise overview of what was discussed
-- **Key points** extraction
-- **Action items** with assignees and deadlines
-- **Meeting templates** — standup, 1-on-1, retrospective, brainstorm, client call, interview
-- **AI chat** — ask questions about any meeting ("What did we decide about pricing?")
-- **Local LLM** — Ollama (Qwen 2.5) for fully offline summarization
-
-### Organization & Search
-- **Cross-meeting search** — full-text search across all transcripts with context snippets
-- **Tags & favorites** for organizing meetings
-- **Sort & filter** by date, duration, status
-- **Bulk operations** — select and delete multiple meetings
-- **Inline rename** — double-click to rename meeting titles
-- **Pagination** for large libraries
-
-### Collaboration
-- **Share meetings** — read-only public links, one click to copy
-- **Webhook notifications** — Slack, Discord, or any URL when a meeting is processed
-- **Browser notifications** when processing completes
-- **Export** — download as Audio, Text, or PDF
-
-### User Experience
-- **Dark mode** — system, dark, or light theme
-- **Keyboard shortcuts** — `R` record, `S` stop, `Cmd+K` search, `D` dark mode, `?` help
-- **Audio playback** in meeting detail
-- **Error boundary** — app recovers gracefully from crashes
-- **PWA** — installable on mobile
-
-### Self-Hosted & Private
-- **100% local mode** — no data leaves your machine (faster-whisper + Ollama)
-- **MinIO** object storage for audio files
-- **PostgreSQL** database
-- **Docker Compose** — one command to deploy everything
-- **Your data, your server** — no third-party analytics or tracking
-
-## Architecture
-
-```
-Minutes
-├── phone-recorder/     React PWA (Vite)
-├── browser-extension/  Chrome/Edge extension
-├── backend/
-│   ├── api/            FastAPI REST API
-│   ├── celery_tasks.py Async processing (transcribe → summarize → extract)
-│   ├── database/       PostgreSQL models & migrations
-│   └── mcp_server/     MCP integration (cloud edition)
-├── docker-compose.yml  Base stack (Postgres, Redis, MinIO, Backend, Frontend)
-├── minutes             CLI management tool
-└── installer/          npx create-manor-minutes
-```
-
-### Editions
-
-| | Community (OSS) | Local | Cloud |
-|---|---|---|---|
-| Auth | Local (email/password) | Local | Manor SSO + Google |
-| STT | OpenAI Whisper API | faster-whisper (local) | OpenAI Whisper |
-| LLM | OpenRouter / OpenAI | Ollama (local) | OpenRouter |
-| Storage | MinIO | MinIO | MinIO |
-| API Keys | Set in Settings | None needed | Server-side |
-| Cost | Your API usage | Free (your hardware) | Managed |
-
-## Configuration
-
-API keys are configured per-user in **Settings** (not server env vars). Each user brings their own keys.
-
-### Local Mode (no API keys)
+Use this instead of the API-mode start command after preparing `.env`:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.community.yml -f docker-compose.local.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.community.yml -f docker-compose.local.yml exec ollama ollama pull qwen2.5:1.5b
 ```
 
-Runs faster-whisper for transcription and Ollama (Qwen 2.5 3B) for summarization. Needs ~6GB RAM.
+The local overlay selects faster-whisper `base` and Ollama `qwen2.5:1.5b`. Initial image and model downloads require internet access. The Whisper model downloads on first use; give it time to finish before judging the first recording. AI inference then runs on your deployment without a paid model API. Speed, memory use, and note quality depend on your hardware and selected models.
 
-### Cloud API Mode
+[Setup, configuration, troubleshooting, and stopping services →](docs/SELF_HOSTING.md)
 
-```bash
-docker compose up -d
+## Recording notes
+
+- Microphone access requires `localhost` or HTTPS. Accessing the app from a phone over a plain HTTP LAN address may block recording.
+- To include remote participants, share a supported browser tab and enable **Share audio**. System audio availability depends on browser and operating system.
+- Live text arrives in chunks and can differ from the final transcript. Mobile/browser behavior can differ from the hosted app, which receives recorder fixes separately.
+- Speaker separation is optional and requires additional setup; labels do not verify a person's identity. See [self-hosting](docs/SELF_HOSTING.md#speaker-labels).
+
+## Built with
+
+React / Vite · FastAPI · Celery / Redis · PostgreSQL · MinIO · faster-whisper / Ollama
+
+```text
+phone-recorder/          Web recorder, meeting library, actions, and chat
+backend/api/            HTTP API, authentication, and AI services
+backend/database/       Models and migrations
+backend/celery_tasks.py  Background meeting processing
+browser-extension/      Browser capture extension source
+installer/              Installer source
+docs/                   Setup documentation and launch assets
 ```
-
-Register → Settings → Enter your OpenAI key (for Whisper) and OpenRouter key (for summarization).
-
-## About
-
-Minutes is the first standalone module from **[Manor AI](https://manorai.xyz)** — an operating system for one-person companies. Meeting notes flow into your Manor knowledge base, and AI agents can reference them to execute tasks.
-
-## License
-
-[MIT](LICENSE)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+Bug reports, documentation improvements, and focused pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](ROADMAP.md). Include your edition, browser, and deployment method when reporting a problem.
+
+Minutes is part of [Manor AI](https://manorai.xyz/). The Community source is available under the [MIT license](LICENSE).

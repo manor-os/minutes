@@ -1,0 +1,14 @@
+{
+  "sourceRevision": "62b34090b7f2785198a55fc29bcf6cb277e54b74",
+  "edition": "community",
+  "method": "Unmodified Community UI; synthetic API fixtures",
+  "privateData": false,
+  "realModelOutputs": false,
+  "fixture": "meeting-fixture.json",
+  "network": "All nonlocal, nonfixture requests blocked",
+  "images": [
+    "community-summary.png",
+    "community-actions.png",
+    "community-ask.png"
+  ]
+}
